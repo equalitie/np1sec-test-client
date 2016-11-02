@@ -24,6 +24,8 @@
 #define PURPLE_PLUGINS
 
 #include <string.h>
+#include <boost/algorithm/string/predicate.hpp>
+
 /* purple headers */
 #include "pidgin.h"
 #include "notify.h"
@@ -38,47 +40,64 @@
 #include "gtkplugin.h"
 #include "gtkconv.h"
 
-#include "conversation.h"
+#include "room.h"
+
+/*
+ * Rant: The only reason for this global is because the sending-chat-msg
+ * callback doesn't give us PurpleConversation*. Instead it gives us
+ * an ID of the chat.
+ */
+static std::map<int, PurpleConversation*> g_conversations;
 
 extern "C" {
 
 #define _(x) const_cast<char*>(x)
 
 //------------------------------------------------------------------------------
-static void set_np1sec_conversation(PurpleConversation* conv,
-                                    np1sec_plugin::Conversation* np1sec_conversation)
+static void set_conv_room(PurpleConversation* conv, np1sec_plugin::Room* room)
 {
-    g_hash_table_insert(conv->data, strdup("np1sec_conversation"), np1sec_conversation);
+    g_hash_table_insert(conv->data, strdup("np1sec_plugin_room"), room);
 }
 
-static np1sec_plugin::Conversation* get_np1sec_conversation(PurpleConversation* conv)
+static np1sec_plugin::Room* get_conv_room(PurpleConversation* conv)
 {
-    auto* p =  g_hash_table_lookup(conv->data, "np1sec_conversation");
-    return static_cast<np1sec_plugin::Conversation*>(p);
+    auto* p =  g_hash_table_lookup(conv->data, "np1sec_plugin_room");
+    return static_cast<np1sec_plugin::Room*>(p);
 }
 
 //------------------------------------------------------------------------------
 static void conversation_created_cb(PurpleConversation *conv)
 {
-    auto* np1sec_conversation = new np1sec_plugin::Conversation(conv);
-    set_np1sec_conversation(conv, np1sec_conversation);
-    // NOTE: We can't call np1sec_conversation->start() here because the
+    auto* room = new np1sec_plugin::Room(conv);
+    set_conv_room(conv, room);
+
+    // NOTE: We can't call room->start() here because the
     // purple_conv_chat_get_id(PURPLE_CONV_CHAT(conv)) doesn't return
     // a valid ID yet and thus sending wouldn't work.
 }
 
 void conversation_updated_cb(PurpleConversation *conv, 
                              PurpleConvUpdateType type) {
-    auto* np1sec_conversation = get_np1sec_conversation(conv);
+    auto* room = get_conv_room(conv);
 
-    if (!np1sec_conversation) {
+    if (!room) {
         // The conversation-created signal has not yet been called.
         return;
     }
 
-    if (!np1sec_conversation->started()) {
-        np1sec_conversation->start();
+    if (!room->started()) {
+        auto id = purple_conv_chat_get_id(PURPLE_CONV_CHAT(conv));
+        assert(g_conversations.count(id) == 0);
+        g_conversations[id] = conv;
+        room->start();
     }
+}
+
+static void deleting_conversation_cb(PurpleConversation *conv) {
+    auto id = purple_conv_chat_get_id(PURPLE_CONV_CHAT(conv));
+    g_conversations.erase(id);
+    auto room = get_conv_room(conv);
+    delete room;
 }
 
 static gboolean receiving_chat_msg_cb(PurpleAccount *account,
@@ -87,28 +106,45 @@ static gboolean receiving_chat_msg_cb(PurpleAccount *account,
                                       PurpleConversation* conv,
                                       PurpleMessageFlags flags)
 {
-    auto np1sec_conv = get_np1sec_conversation(conv);
-    assert(np1sec_conv);
-    if (!np1sec_conv) return FALSE;
-    np1sec_conv->on_received_data(*sender, *message);
+    auto room = get_conv_room(conv);
+    assert(room);
+    if (!room) return FALSE;
+    room->on_received_data(*sender, *message);
 
     // Returning TRUE causes this message not to be displayed.
     // Displaying is done explicitly from np1sec.
     return TRUE;
 }
 
+static
 void sending_chat_msg_cb(PurpleAccount *account, char **message, int id) {
-    //std::cout << "sending_chat_msg_cb " << *message << std::endl;
+    auto conv_i = g_conversations.find(id);
+    assert(conv_i != g_conversations.end());
+
+    auto room = get_conv_room(conv_i->second);
+    assert(room);
+
+    if (boost::starts_with(*message, "send_raw:")) {
+        auto m = *message;
+        *message = g_strdup(m + strlen("send_raw:"));
+        g_free(m);
+        return;
+    }
+
+    room->send_chat_message(*message);
+
+    g_free(*message);
+    *message = NULL;
 }
 
 //------------------------------------------------------------------------------
 static void setup_purple_callbacks(PurplePlugin* plugin)
 {
-    //void* conn_handle = purple_connections_get_handle();
     void* conv_handle = purple_conversations_get_handle();
 
     purple_signal_connect(conv_handle, "conversation-created", plugin, PURPLE_CALLBACK(conversation_created_cb), NULL);
     purple_signal_connect(conv_handle, "conversation-updated", plugin, PURPLE_CALLBACK(conversation_updated_cb), NULL);
+    purple_signal_connect(conv_handle, "deleting-conversation", plugin, PURPLE_CALLBACK(deleting_conversation_cb), NULL);
     purple_signal_connect(conv_handle, "receiving-chat-msg", plugin, PURPLE_CALLBACK(receiving_chat_msg_cb), NULL);
     purple_signal_connect(conv_handle, "sending-chat-msg", plugin, PURPLE_CALLBACK(sending_chat_msg_cb), NULL);
 }

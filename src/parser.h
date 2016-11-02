@@ -18,7 +18,13 @@
 
 #pragma once
 
-namespace np1sec_plugin { namespace mock {
+//#include <boost/range/adaptor/map.hpp>
+#include <experimental/optional>
+#include <set>
+//#include <map>
+#include <sstream>
+
+namespace np1sec_plugin {
 
 namespace stdx = std::experimental;
 
@@ -219,4 +225,3 @@ inline void run_parser_tests() {
 }
 
 } // np1sec_plugin namespace
-} // mock namespace
