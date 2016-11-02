@@ -98,7 +98,7 @@ void Conversation::start() {
 
 void Conversation::display(std::string sender, std::string message) {
     assert(_conv && _conv->ui_ops && _conv->ui_ops->write_conv);
-    // _conv->ui_ops->write_chat isn't set on Pidgin.
+    // _conv->ui_ops->write_chat isn't set (is NULL) on Pidgin.
     _conv->ui_ops->write_conv(_conv,
                               sender.c_str(),
                               NULL,

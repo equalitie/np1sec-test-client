@@ -33,8 +33,6 @@
 #include "core.h"
 
 /* np1sec headers */
-#include "src/interface.h"
-#include "src/userstate.h"
 
 /* Purple GTK headers */
 #include "gtkplugin.h"
@@ -109,8 +107,8 @@ static void setup_purple_callbacks(PurplePlugin* plugin)
     //void* conn_handle = purple_connections_get_handle();
     void* conv_handle = purple_conversations_get_handle();
 
-	purple_signal_connect(conv_handle, "conversation-created", plugin, PURPLE_CALLBACK(conversation_created_cb), NULL);
-	purple_signal_connect(conv_handle, "conversation-updated", plugin, PURPLE_CALLBACK(conversation_updated_cb), NULL);
+    purple_signal_connect(conv_handle, "conversation-created", plugin, PURPLE_CALLBACK(conversation_created_cb), NULL);
+    purple_signal_connect(conv_handle, "conversation-updated", plugin, PURPLE_CALLBACK(conversation_updated_cb), NULL);
     purple_signal_connect(conv_handle, "receiving-chat-msg", plugin, PURPLE_CALLBACK(receiving_chat_msg_cb), NULL);
     purple_signal_connect(conv_handle, "sending-chat-msg", plugin, PURPLE_CALLBACK(sending_chat_msg_cb), NULL);
 }

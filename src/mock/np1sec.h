@@ -21,6 +21,7 @@
 #include <boost/range/adaptor/map.hpp>
 #include <experimental/optional>
 #include <set>
+#include <map>
 #include <sstream>
 
 #include "../debug.h"
