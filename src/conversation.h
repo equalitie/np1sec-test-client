@@ -27,13 +27,13 @@
 #include <memory>
 #include <iostream>
 
-#include "np1sec_mock.h"
+#include "mock/np1sec.h"
 
 namespace np1sec_plugin {
 
 struct Conversation {
     using Self = Conversation;
-    using Np1Sec = Np1SecMock;
+    using Np1Sec = mock::Np1Sec;
 
 public:
     Conversation(PurpleConversation* conv);
