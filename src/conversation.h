@@ -45,10 +45,12 @@ public:
 private:
     static std::string sanitize_name(std::string name);
     void send(std::string message);
+    void display(std::string sender, std::string message);
 
 private:
     PurpleConversation *_conv;
     PurpleAccount *_account;
+    std::string _username;
     std::unique_ptr<Np1Sec> np1sec;
 };
 
@@ -58,6 +60,7 @@ private:
 Conversation::Conversation(PurpleConversation* conv)
     : _conv(conv)
     , _account(conv->account)
+    , _username(sanitize_name(_account->username))
 {
 }
 
@@ -71,7 +74,6 @@ void Conversation::start() {
 
         void send(std::string message) override {
             self.send(std::move(message));
-            std::cout << "transport send" << std::endl;
         }
     };
 
@@ -80,14 +82,29 @@ void Conversation::start() {
 
         RoomActions(Self* self) : self(*self) {} 
 
-        void new_channel(Np1Sec::Channel*) override {
-            std::cout << "new channel" << std::endl;
+        void new_channel(const Np1Sec::ChannelId& id, Np1Sec::Channel*) override {
+            std::cout << self._username << ": new channel " << id << std::endl;
+        }
+
+        void display(std::string sender, std::string message) override {
+            self.display(std::move(sender), std::move(message));
         }
     };
 
-    np1sec.reset(new Np1Sec(sanitize_name(_account->username),
+    np1sec.reset(new Np1Sec(_username,
                             new Transport(this),
                             new RoomActions(this)));
+}
+
+void Conversation::display(std::string sender, std::string message) {
+    assert(_conv && _conv->ui_ops && _conv->ui_ops->write_conv);
+    // _conv->ui_ops->write_chat isn't set on Pidgin.
+    _conv->ui_ops->write_conv(_conv,
+                              sender.c_str(),
+                              NULL,
+                              message.c_str(),
+                              PURPLE_MESSAGE_RECV,
+                              0);
 }
 
 void Conversation::on_received_data(std::string sender, std::string message) {

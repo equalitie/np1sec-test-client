@@ -97,7 +97,10 @@ struct Parser {
 // -----------------------------------------------------------------------------
 class Np1SecMock {
 public:
-    struct Channel;
+    using ChannelId = std::set<std::string>;
+
+    struct Channel {
+    };
 
     struct TransportInterface
     {
@@ -107,7 +110,8 @@ public:
 
     struct RoomInterface
     {
-        virtual void new_channel(Channel*) = 0;
+        virtual void new_channel(const ChannelId&, Channel*) = 0;
+        virtual void display(std::string sender, std::string message) = 0;
         virtual ~RoomInterface() {};
     };
 
@@ -124,18 +128,11 @@ private:
     std::string _username;
     std::unique_ptr<TransportInterface> _transport;
     std::unique_ptr<RoomInterface> _room;
-    std::set<std::set<std::string>> _channels;
+    std::map<ChannelId, Channel> _channels;
 };
 
 // -----------------------------------------------------------------------------
 // Implementation
-// -----------------------------------------------------------------------------
-template<class T>
-T unwrap(stdx::optional<T>&& opt) {
-    if (!opt) throw std::runtime_error("parse error");
-    return std::move(*opt);
-}
-
 // -----------------------------------------------------------------------------
 Np1SecMock::Np1SecMock(std::string username,
                        TransportInterface* transport_interface,
@@ -145,17 +142,19 @@ Np1SecMock::Np1SecMock(std::string username,
     , _room(room_interface)
 {
     assert(_username.size());
-    _channels.insert(std::set<std::string>{_username});
+    _channels.emplace(ChannelId{_username}, Channel());
     _transport->send("#np1sec list-channels");
 }
 
 void Np1SecMock::receive_handler(std::string sender, std::string message)
 {
-    std::cout << "receive handler " << sender << " " << message << std::endl;
+    using namespace std;
 
+    bool is_command = true;
 
     try {
         if (message.find("#np1sec ") != 0) {
+            is_command = false;
             throw std::runtime_error("not a np1sec command");
         }
 
@@ -163,22 +162,37 @@ void Np1SecMock::receive_handler(std::string sender, std::string message)
 
         auto command = parser.read_command();
 
-        std::cout << "cmd: " << command << std::endl;
         if (command == "list-channels") {
             _transport->send("#np1sec channels " + construct_channel_list());
         }
         else if (command == "channels") {
             Parser channels_parser(parser.read_list());
             while (!channels_parser.finished()) {
+                ChannelId channel_id;
+
                 Parser channel_parser(channels_parser.read_list());
+
                 while (!channel_parser.finished()) {
                     auto user = channel_parser.read_command();
+                    channel_id.insert(move(user));
+                }
+
+                if (_channels.count(channel_id) == 0) {
+                    auto iter = _channels.emplace(move(channel_id), Channel()).first;
+                    _room->new_channel(iter->first, &iter->second);
                 }
             }
         }
     }
     catch(std::runtime_error& e) {
-        std::cout << "err: " << e.what() << std::endl;
+        if (is_command) {
+            std::cout << _username << ": err: " << e.what() << std::endl;
+            std::cout << _username << "    " << message << std::endl;
+        }
+    }
+
+    if (true || !is_command) {
+        _room->display(std::move(sender), std::move(message));
     }
 }
 
@@ -189,8 +203,8 @@ std::string Np1SecMock::construct_channel_list() {
     for (auto i = _channels.begin(); i != _channels.end(); ++i) {
         if (i != _channels.begin()) ss << " ";
         ss << "(";
-        for (auto j = i->begin(); j != i->end(); ++j) {
-            if (j != i->begin()) ss << " ";
+        for (auto j = i->first.begin(); j != i->first.end(); ++j) {
+            if (j != i->first.begin()) ss << " ";
             ss << *j;
         }
         ss << ")";
