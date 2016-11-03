@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.2)
+cmake_minimum_required (VERSION 2.8)
 ################################################################################
 set(CMAKE_BUILD_TYPE Debug)
 set(GLOB BOOST_VERSION 1.58)
@@ -6,8 +6,8 @@ set(GLOB BOOST_VERSION 1.58)
 ################################################################################
 project (np1sec-pidgin-plugin)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1z -Wall -ggdb")
-set(PIDGIN_INC_DIR "/usr/include")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -Wall -ggdb")
+set(PIDGIN_INC_DIR "/usr/include" CACHE FILEPATH "pidgin dir")
 
 find_package(Boost ${BOOST_VERSION} COMPONENTS REQUIRED)
 # Use the package PkgConfig to detect GTK+ headers/library files
