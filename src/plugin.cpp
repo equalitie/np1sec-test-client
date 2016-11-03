@@ -26,7 +26,7 @@
 #include <string.h>
 #include <boost/algorithm/string/predicate.hpp>
 
-/* purple headers */
+/* Purple headers */
 #include "pidgin.h"
 #include "notify.h"
 #include "version.h"
@@ -34,12 +34,11 @@
 #include "debug.h"
 #include "core.h"
 
-/* np1sec headers */
-
 /* Purple GTK headers */
 #include "gtkplugin.h"
 #include "gtkconv.h"
 
+/* Plugin headers */
 #include "room.h"
 
 /*
