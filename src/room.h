@@ -132,7 +132,7 @@ void Room::send_chat_message(const std::string& message)
         return;
     }
 
-    std::cout << _username << " Warning: not sending: " << message << std::endl;
+    _room->send_message(message);
 }
 
 inline
@@ -150,9 +150,12 @@ bool Room::interpret_as_command(const std::string& cmd)
         auto c = parse<string>(p);
 
         if (c == "help") {
-            display("possible commands: help, "
-                                       "search-channels, "
-                                       "create-channel");
+            inform("<br>"
+                   "possible commands:<br>"
+                   "&nbsp;&nbsp;&nbsp;&nbsp;help<br>"
+                   "&nbsp;&nbsp;&nbsp;&nbsp;search-channels<br>"
+                   "&nbsp;&nbsp;&nbsp;&nbsp;create-channel<br>"
+                   "&nbsp;&nbsp;&nbsp;&nbsp;join-channel &lt;channel-id&gt;<br>");
         }
         else if (c == "search-channels") {
             _room->search_channels();
@@ -160,13 +163,29 @@ bool Room::interpret_as_command(const std::string& cmd)
         else if (c == "create-channel") {
             _room->create_channel();
         }
+        else if (c == "join-channel") {
+            auto channel_id_str = parse<string>(p);
+            np1sec::Channel* channel = nullptr;
+            try {
+                auto channel_id = std::stoi(channel_id_str);
+                channel = reinterpret_cast<np1sec::Channel*>(channel_id);
+
+                if (_channels.count(channel) == 0) {
+                    throw std::exception();
+                }
+            } catch(...) {
+                inform("Channel id \"", channel_id_str, "\" not found");
+                return true;
+            }
+            _room->join_channel(channel);
+        }
         else  {
-            display("\"" + p.text + "\" is not a valid np1sec command");
+            inform("\"", p.text, "\" is not a valid np1sec command");
             return true;
         }
     }
     catch (...) {
-        return false;
+        return true;
     }
 
     return true;
@@ -183,8 +202,7 @@ inline
 np1sec::ChannelInterface*
 Room::new_channel(np1sec::Channel* channel)
 {
-    inform("New channel: ", ((size_t) channel)
-          , " ", encode_range(channel->users()));
+    inform("New channel: </b>", ((size_t) channel), "<b> ", encode_range(channel->users()));
 
     auto p = new Channel(channel, *this);
     auto result = _channels.emplace(channel, std::unique_ptr<Channel>(p));
