@@ -21,8 +21,7 @@
 #include <set>
 #include <list>
 #include <ostream>
-
-//namespace np1sec_plugin { namespace debug {
+#include <sstream>
 
 template<class T>
 std::ostream& operator<<(std::ostream& os, const std::set<T>& s) {
@@ -46,4 +45,22 @@ std::ostream& operator<<(std::ostream& os, const std::list<T>& s) {
     return os;
 }
 
-//}}
+namespace np1sec_plugin { namespace util {
+    namespace _detail {
+        void stringify(std::ostream& os) {
+        }
+
+        template<class Arg, class... Args>
+        void stringify(std::ostream& os, Arg&& arg, Args&&... args) {
+            os << arg;
+            stringify(os, std::forward<Args>(args)...);
+        }
+    }
+
+    template<class... Args>
+    std::string str(Args&&... args) {
+        std::stringstream ss;
+        _detail::stringify(ss, std::forward<Args>(args)...);
+        return ss.str();
+    }
+}}

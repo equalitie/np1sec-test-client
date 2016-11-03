@@ -31,11 +31,9 @@
 #include "src/interface.h"
 #include "src/room.h"
 
-/* Plugin headers */
-#include "channel.h"
-#include "parser.h"
-
 namespace np1sec_plugin {
+
+class Channel;
 
 struct Room final : private np1sec::RoomInterface {
     struct TimerToken final : public np1sec::TimerToken {
@@ -61,6 +59,8 @@ public:
     void on_received_data(std::string sender, std::string message);
 
     void send_chat_message(const std::string& message);
+
+    template<class... Args> void inform(Args&&... args);
 
 private:
     void display(const std::string& message);
@@ -98,6 +98,13 @@ private:
     ChannelMap::iterator _current_channel = _channels.end();
 };
 
+} // np1sec_plugin namespace
+
+/* Plugin headers */
+#include "channel.h"
+#include "parser.h"
+
+namespace np1sec_plugin {
 //------------------------------------------------------------------------------
 // Implementation
 //------------------------------------------------------------------------------
@@ -176,15 +183,10 @@ inline
 np1sec::ChannelInterface*
 Room::new_channel(np1sec::Channel* channel)
 {
-    auto users = channel->users();
+    inform("New channel: ", ((size_t) channel)
+          , " ", encode_range(channel->users()));
 
-    display("New channel:");
-
-    for (const auto& user : users) {
-        display("    " + user);
-    }
-
-    auto p = new Channel(channel);
+    auto p = new Channel(channel, *this);
     auto result = _channels.emplace(channel, std::unique_ptr<Channel>(p));
 
     assert(result.second && "Already got this channel");
@@ -205,13 +207,20 @@ void Room::channel_removed(np1sec::Channel* channel)
 inline
 void Room::joined_channel(np1sec::Channel* channel)
 {
-    assert(0 && "TODO");
+    inform("Joined channel ", ((size_t) channel));
 }
 
 inline
 void Room::disconnected()
 {
     assert(0 && "TODO Room::disconnected");
+}
+
+template<class... Args>
+inline
+void Room::inform(Args&&... args)
+{
+    display(_username, "<b>" + util::str(std::forward<Args>(args)...) + "<b>");
 }
 
 inline

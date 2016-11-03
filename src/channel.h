@@ -33,13 +33,16 @@
 
 namespace np1sec_plugin {
 
+class Room;
+
 class Channel final : public np1sec::ChannelInterface {
     using PublicKey = np1sec::PublicKey;
 
 	public:
     np1sec::Channel* delegate;
+    Room& room;
 
-    Channel(np1sec::Channel* delegate) : delegate(delegate) {}
+    Channel(np1sec::Channel* delegate, Room& room) : delegate(delegate), room(room) {}
 
 	public:
 	/*
@@ -93,47 +96,54 @@ class Channel final : public np1sec::ChannelInterface {
 	void dump() override;
 };
 
+} // np1sec_plugin namespace
+
+/* plugin headers */
+#include "room.h"
+
+namespace np1sec_plugin {
+
 //------------------------------------------------------------------------------
 // Implementation
 //------------------------------------------------------------------------------
 void Channel::user_joined(const std::string& username)
 {
-    assert(0 && "TODO");
+    room.inform("Channel::user_joined(", username, ")");
 }
 
 void Channel::user_left(const std::string& username)
 {
-    assert(0 && "TODO");
+    room.inform("Channel::user_left(", username, ")");
 }
 
 void Channel::user_authenticated(const std::string& username, const PublicKey& public_key)
 {
-    assert(0 && "TODO");
+    room.inform("Channel::user_authenticated(", username, ")");
 }
 
 void Channel::user_authentication_failed(const std::string& username)
 {
-    assert(0 && "TODO");
+    room.inform("Channel::user_authentication_failed(", username, ")");
 }
 
 void Channel::user_authorized_by(const std::string& user, const std::string& target)
 {
-    assert(0 && "TODO");
+    room.inform("Channel::user_authorized_id(", user, ")");
 }
 
 void Channel::user_promoted(const std::string& username)
 {
-    assert(0 && "TODO");
+    room.inform("Channel::user_promoted(", username, ")");
 }
 
 void Channel::joined()
 {
-    assert(0 && "TODO");
+    room.inform("Channel::joined()");
 }
 
 void Channel::authorized()
 {
-    assert(0 && "TODO");
+    room.inform("Channel::authorized()");
 }
 
 
@@ -142,7 +152,7 @@ void Channel::authorized()
 // DEBUG
 void Channel::dump()
 {
-    assert(0 && "TODO");
+    room.inform("Channel::dump()");
 }
 
 } // np1sec_plugin namespace
