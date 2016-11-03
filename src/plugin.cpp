@@ -103,11 +103,15 @@ static gboolean receiving_chat_msg_cb(PurpleAccount *account,
                                       char** sender,
                                       char **message,
                                       PurpleConversation* conv,
-                                      PurpleMessageFlags flags)
+                                      PurpleMessageFlags *flags)
 {
     auto room = get_conv_room(conv);
     assert(room);
     if (!room) return FALSE;
+
+    // Ignore historic messages.
+    if (*flags & PURPLE_MESSAGE_DELAYED) return TRUE;
+
     room->on_received_data(*sender, *message);
 
     // Returning TRUE causes this message not to be displayed.
