@@ -109,6 +109,9 @@ namespace np1sec_plugin {
 void Channel::user_joined(const std::string& username)
 {
     room.inform("Channel::user_joined(", username, ")");
+    auto channel = room.find_channel(size_t(delegate));
+    assert(channel);
+    channel->add_member(username);
 }
 
 void Channel::user_left(const std::string& username)

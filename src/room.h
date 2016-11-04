@@ -65,6 +65,8 @@ public:
 
     template<class... Args> void inform(Args&&... args);
 
+    ChannelDisplay<Channel>::Channel* find_channel(size_t id) { return _channels->find_channel(id); }
+
 private:
     void display(const std::string& message);
     void display(const std::string& sender, const std::string& message);
@@ -87,8 +89,10 @@ private:
 
     bool interpret_as_command(const std::string&);
 
+    //void add_user_to_channel(size_t channel, const std::string& username);
+
 private:
-    using ChannelMap = std::map<np1sec::Channel*, std::unique_ptr<Channel>>;
+    //using ChannelMap = std::map<np1sec::Channel*, std::unique_ptr<Channel>>;
 
     PurpleConversation *_conv;
     PurpleAccount *_account;
@@ -97,9 +101,8 @@ private:
     np1sec::PrivateKey _private_key;
 
     std::set<TimerToken*> _timer_tokens;
-    ChannelMap _channels;
-    ChannelMap::iterator _current_channel = _channels.end();
-    std::unique_ptr<ChannelDisplay> _channel_display;
+    //ChannelMap _channels;
+    std::unique_ptr<ChannelDisplay<Channel>> _channels;
 };
 
 } // np1sec_plugin namespace
@@ -119,7 +122,7 @@ Room::Room(PurpleConversation* conv)
     , _username(sanitize_name(_account->username))
     , _private_key(np1sec::PrivateKey::generate())
 {
-    _channel_display = ChannelDisplay::create_new_in(conv);
+    _channels = ChannelDisplay<Channel>::create_new_in(conv);
 }
 
 inline
@@ -152,15 +155,21 @@ bool Room::interpret_as_command(const std::string& cmd)
     Parser p(cmd.substr(1));
 
     try {
+        inform("$ ", p.text);
+
         auto c = parse<string>(p);
 
         if (c == "help") {
             inform("<br>"
                    "Available commands:<br>"
                    "&nbsp;&nbsp;&nbsp;&nbsp;help<br>"
+                   "&nbsp;&nbsp;&nbsp;&nbsp;whoami<br>"
                    "&nbsp;&nbsp;&nbsp;&nbsp;search-channels<br>"
                    "&nbsp;&nbsp;&nbsp;&nbsp;create-channel<br>"
                    "&nbsp;&nbsp;&nbsp;&nbsp;join-channel &lt;channel-id&gt;<br>");
+        }
+        else if (c == "whoami") {
+            inform("You're ", _username);
         }
         else if (c == "search-channels") {
             _room->search_channels();
@@ -175,7 +184,7 @@ bool Room::interpret_as_command(const std::string& cmd)
                 auto channel_id = std::stoi(channel_id_str);
                 channel = reinterpret_cast<np1sec::Channel*>(channel_id);
 
-                if (_channels.count(channel) == 0) {
+                if (!_channels->exists(size_t(channel))) {
                     throw std::exception();
                 }
             } catch(...) {
@@ -214,36 +223,39 @@ inline
 np1sec::ChannelInterface*
 Room::new_channel(np1sec::Channel* channel)
 {
-    inform("New channel: </b>", ((size_t) channel), "<b> ", encode_range(channel->users()));
+    auto users = channel->users();
 
-    auto p = new Channel(channel, *this);
-    auto result = _channels.emplace(channel, std::unique_ptr<Channel>(p));
+    inform("Room::new_channel(</b>", size_t(channel),
+           "<b>) with participants: ", encode_range(users));
 
-    assert(result.second && "Already got this channel");
+    auto& result = _channels->create(size_t(channel), Channel(channel, *this));
 
-    return p;
+    for (const auto user : users) {
+        result.add_member(user);
+    }
+
+    return &result.data;
 }
 
 inline
 void Room::channel_removed(np1sec::Channel* channel)
 {
-    auto channel_i = _channels.find(channel);
-
-    assert(channel_i != _channels.end());
-
-    _channels.erase(channel_i);
+    _channels->erase(size_t(channel));
 }
 
 inline
 void Room::joined_channel(np1sec::Channel* channel)
 {
-    inform("Joined channel ", ((size_t) channel));
+    inform("Room::joined_channel ", ((size_t) channel));
+    //auto ch = _channels->find_channel(size_t(channel));
+    //assert(ch);
+    //ch->add_member(_username);
 }
 
 inline
 void Room::disconnected()
 {
-    assert(0 && "TODO Room::disconnected");
+    inform("Room::disconnected()");
 }
 
 template<class... Args>
