@@ -31,6 +31,9 @@
 #include "src/interface.h"
 #include "src/room.h"
 
+/* Plugin headers */
+#include "channel_display.h"
+
 namespace np1sec_plugin {
 
 class Channel;
@@ -96,6 +99,7 @@ private:
     std::set<TimerToken*> _timer_tokens;
     ChannelMap _channels;
     ChannelMap::iterator _current_channel = _channels.end();
+    std::unique_ptr<ChannelDisplay> _channel_display;
 };
 
 } // np1sec_plugin namespace
@@ -115,6 +119,7 @@ Room::Room(PurpleConversation* conv)
     , _username(sanitize_name(_account->username))
     , _private_key(np1sec::PrivateKey::generate())
 {
+    _channel_display = ChannelDisplay::create_new_in(conv);
 }
 
 inline

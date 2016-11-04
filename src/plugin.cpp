@@ -154,14 +154,14 @@ static void setup_purple_callbacks(PurplePlugin* plugin)
 
 gboolean np1sec_plugin_load(PurplePlugin* plugin)
 {
-    std::cout << "plugin load" << std::endl;
+    std::cout << "(n+1)sec plugin loaded" << std::endl;
     setup_purple_callbacks(plugin);
     return true;
 }
 
 gboolean np1sec_plugin_unload(PurplePlugin* plugin)
 {
-    std::cout << "plugin unload" << std::endl;
+    std::cout << "(n+1)sec plugin unloaded" << std::endl;
     return true;
 }
 
