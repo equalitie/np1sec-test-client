@@ -42,9 +42,6 @@ class Channel final : public np1sec::ChannelInterface {
     using PublicKey = np1sec::PublicKey;
 
 public:
-    using Id = np1sec::Channel*;
-
-public:
     np1sec::Channel* delegate;
 
     Channel(np1sec::Channel*, Room&);

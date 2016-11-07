@@ -65,10 +65,6 @@ public:
 
     template<class... Args> void inform(Args&&... args);
 
-    //ChannelDisplay<Channel>::Channel* find_channel(size_t id) { return _channels->find_channel(id); }
-
-    //void remove_member(np1sec::Channel*, const std::string& member);
-
     RoomView& get_view() { return _room_view; }
 
 private:
@@ -184,15 +180,16 @@ bool Room::interpret_as_command(const std::string& cmd)
             auto channel_id_str = parse<string>(p);
             np1sec::Channel* channel = nullptr;
             try {
-                auto* channel_id = reinterpret_cast<np1sec::Channel*>(std::stoi(channel_id_str));
+                channel = reinterpret_cast<np1sec::Channel*>(std::stoi(channel_id_str));
 
-                if (_channels.count(channel_id) == 0) {
+                if (_channels.count(channel) == 0) {
                     throw std::exception();
                 }
             } catch(...) {
                 inform("Channel id \"", channel_id_str, "\" not found");
                 return true;
             }
+            inform("joining channel ", channel, " ", channel_id_str);
             _room->join_channel(channel);
         }
         else  {
@@ -256,9 +253,6 @@ inline
 void Room::joined_channel(np1sec::Channel* channel)
 {
     inform("Room::joined_channel ", size_t(channel));
-    //auto ch = _channels->find_channel(size_t(channel));
-    //assert(ch);
-    //ch->add_member(_username);
 }
 
 inline
