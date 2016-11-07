@@ -99,11 +99,6 @@ ChannelDisplay<CD>::ChannelDisplay(GtkTreeView* tree_view)
 
     _tree_store = gtk_tree_store_new (NUM_COLS, G_TYPE_STRING);
     gtk_tree_view_set_model(GTK_TREE_VIEW(_tree_view), GTK_TREE_MODEL(_tree_store));
-
-    //(*this)[0].add_member("alice");
-    //(*this)[0].add_member("bob");
-    //(*this)[1].add_member("charlie");
-    //(*this)[1].add_member("dave");
 }
 
 template<class CD>
@@ -200,27 +195,26 @@ ChannelDisplay<CD>::create_new_in(PurpleConversation* conv)
         return nullptr;
     }
 
-    g_object_ref(target);
-    auto unref_target = defer([target] { g_object_unref(target); });
+    GtkWidget* userlist = gtk_paned_get_child2(GTK_PANED(target));
 
-    gtk_container_remove(GTK_CONTAINER(parent), target);
+    g_object_ref(userlist);
+    auto unref_userlist = defer([userlist] { g_object_unref(userlist); });
 
-	GtkWidget* hpaned = gtk_hpaned_new();
-	gtk_box_pack_start(GTK_BOX(parent), hpaned, TRUE, TRUE, 0);
-	gtk_widget_show(hpaned);
-	gtk_paned_pack1(GTK_PANED(hpaned), target, TRUE, TRUE);
+    gtk_container_remove(GTK_CONTAINER(target), userlist);
+
+	GtkWidget* vpaned = gtk_vpaned_new();
+    gtk_paned_pack2(GTK_PANED(target), vpaned, TRUE, TRUE);
+
+	gtk_widget_show(vpaned);
+
+	gtk_paned_pack1(GTK_PANED(vpaned), userlist, TRUE, TRUE);
 
     GtkWidget* tree_view = gtk_tree_view_new();
-	gtk_widget_set_size_request(tree_view, 10, -1); // TODO: Find a better way.
-	gtk_paned_pack2(GTK_PANED(hpaned), tree_view, TRUE, TRUE);
+	gtk_paned_pack2(GTK_PANED(vpaned), tree_view, TRUE, TRUE);
+
+    // TODO: Not sure why the value of 1 gives a good result
+	gtk_widget_set_size_request(vpaned, 1, -1);
 	gtk_widget_show(tree_view);
-
-	//GtkWidget* button = gtk_button_new_with_label("_Button");
-	//gtk_paned_pack2(GTK_PANED(hpaned), button, TRUE, TRUE);
-	//gtk_widget_show(button);
-
-	gtk_box_pack_start(GTK_BOX(parent), hpaned, TRUE, TRUE, 0);
-	gtk_box_reorder_child(GTK_BOX(parent), hpaned, output_window_position);
 
     return std::make_unique<ChannelDisplay>(GTK_TREE_VIEW(tree_view));
 }
