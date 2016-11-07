@@ -55,55 +55,55 @@ public:
     void add_member(const std::string&);
 
 public:
-	/*
-	 * A user joined this channel. No cryptographic identity is known yet.
-	 */
-	void user_joined(const std::string& username) override;
-	
-	/*
-	 * A user left the channel.
-	 */
-	void user_left(const std::string& username) override;
-	
-	/*
-	 * The cryptographic identity of a user was confirmed.
-	 */
-	void user_authenticated(const std::string& username, const PublicKey& public_key) override;
-	
-	/*
-	 * A user failed to authenticate. This indicates an attack!
-	 */
-	void user_authentication_failed(const std::string& username) override;
-	
-	/*
-	 * A user <authenticatee> was accepted into the channel by a user <authenticator>.
-	 */
-	void user_authorized_by(const std::string& user, const std::string& target) override;
-	
-	/*
-	 * A user got authorized by all participants and is now a full participant.
-	 */
-	void user_promoted(const std::string& username) override;
-	
-	
-	/*
-	 * You joined this channel.
-	 */
-	void joined() override;
-	
-	/*
-	 * You got authorized by all participants and are now a full participant.
-	 */
-	void authorized() override;
-	
-	
-	/*
-	 * Not implemented yet.
-	 */
-	// virtual void message_received(const std::string& username, const std::string& message) = 0;
-	
-	// DEBUG
-	void dump() override;
+    /*
+     * A user joined this channel. No cryptographic identity is known yet.
+     */
+    void user_joined(const std::string& username) override;
+    
+    /*
+     * A user left the channel.
+     */
+    void user_left(const std::string& username) override;
+    
+    /*
+     * The cryptographic identity of a user was confirmed.
+     */
+    void user_authenticated(const std::string& username, const PublicKey& public_key) override;
+    
+    /*
+     * A user failed to authenticate. This indicates an attack!
+     */
+    void user_authentication_failed(const std::string& username) override;
+    
+    /*
+     * A user <authenticatee> was accepted into the channel by a user <authenticator>.
+     */
+    void user_authorized_by(const std::string& user, const std::string& target) override;
+    
+    /*
+     * A user got authorized by all participants and is now a full participant.
+     */
+    void user_promoted(const std::string& username) override;
+    
+    
+    /*
+     * You joined this channel.
+     */
+    void joined() override;
+    
+    /*
+     * You got authorized by all participants and are now a full participant.
+     */
+    void authorized() override;
+    
+    
+    /*
+     * Not implemented yet.
+     */
+    // virtual void message_received(const std::string& username, const std::string& message) = 0;
+    
+    // DEBUG
+    void dump() override;
 
 private:
     size_t channel_id() const { return size_t(delegate); }
@@ -147,6 +147,11 @@ void Channel::user_left(const std::string& username)
 {
     _room.inform("Channel::user_left(", channel_id(), ", ", username, ")");
     _users.erase(username);
+
+    if (_users.empty()) {
+        // Self destruct.
+        _room._channels.erase(delegate);
+    }
 }
 
 void Channel::user_authenticated(const std::string& username, const PublicKey& public_key)

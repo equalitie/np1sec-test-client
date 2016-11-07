@@ -90,6 +90,8 @@ private:
     bool interpret_as_command(const std::string&);
 
 private:
+    friend class Channel;
+
     using ChannelMap = std::map<np1sec::Channel*, std::unique_ptr<Channel>>;
 
     PurpleConversation *_conv;
