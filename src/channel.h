@@ -94,6 +94,9 @@ class Channel final : public np1sec::ChannelInterface {
 	
 	// DEBUG
 	void dump() override;
+
+    private:
+    size_t channel_id() const { return size_t(delegate); }
 };
 
 } // np1sec_plugin namespace
@@ -108,7 +111,7 @@ namespace np1sec_plugin {
 //------------------------------------------------------------------------------
 void Channel::user_joined(const std::string& username)
 {
-    room.inform("Channel::user_joined(", username, ")");
+    room.inform("Channel::user_joined(", channel_id(), ", ", username, ")");
     auto channel = room.find_channel(size_t(delegate));
     assert(channel);
     channel->add_member(username);
@@ -116,37 +119,38 @@ void Channel::user_joined(const std::string& username)
 
 void Channel::user_left(const std::string& username)
 {
-    room.inform("Channel::user_left(", username, ")");
+    room.inform("Channel::user_left(", channel_id(), ", ", username, ")");
+    room.remove_member(channel_id(), username);
 }
 
 void Channel::user_authenticated(const std::string& username, const PublicKey& public_key)
 {
-    room.inform("Channel::user_authenticated(", username, ")");
+    room.inform("Channel::user_authenticated(", channel_id(), ", ", username, ")");
 }
 
 void Channel::user_authentication_failed(const std::string& username)
 {
-    room.inform("Channel::user_authentication_failed(", username, ")");
+    room.inform("Channel::user_authentication_failed(", channel_id(), ", ", username, ")");
 }
 
 void Channel::user_authorized_by(const std::string& user, const std::string& target)
 {
-    room.inform("Channel::user_authorized_id(", user, ")");
+    room.inform("Channel::user_authorized_id(", channel_id(), ", ", user, ")");
 }
 
 void Channel::user_promoted(const std::string& username)
 {
-    room.inform("Channel::user_promoted(", username, ")");
+    room.inform("Channel::user_promoted(", channel_id(), ", ", username, ")");
 }
 
 void Channel::joined()
 {
-    room.inform("Channel::joined()");
+    room.inform("Channel::joined(", channel_id(), ")");
 }
 
 void Channel::authorized()
 {
-    room.inform("Channel::authorized()");
+    room.inform("Channel::authorized(", channel_id(), ")");
 }
 
 
@@ -155,7 +159,7 @@ void Channel::authorized()
 // DEBUG
 void Channel::dump()
 {
-    room.inform("Channel::dump()");
+    room.inform("Channel::dump(", channel_id(), ")");
 }
 
 } // np1sec_plugin namespace

@@ -67,6 +67,9 @@ public:
 
     ChannelDisplay<Channel>::Channel* find_channel(size_t id) { return _channels->find_channel(id); }
 
+    void remove_member(size_t channel_id, const std::string& member) {
+        _channels->remove_member(channel_id, member);
+    }
 private:
     void display(const std::string& message);
     void display(const std::string& sender, const std::string& message);
@@ -92,8 +95,6 @@ private:
     //void add_user_to_channel(size_t channel, const std::string& username);
 
 private:
-    //using ChannelMap = std::map<np1sec::Channel*, std::unique_ptr<Channel>>;
-
     PurpleConversation *_conv;
     PurpleAccount *_account;
     std::string _username;
@@ -101,7 +102,6 @@ private:
     np1sec::PrivateKey _private_key;
 
     std::set<TimerToken*> _timer_tokens;
-    //ChannelMap _channels;
     std::unique_ptr<ChannelDisplay<Channel>> _channels;
 };
 
@@ -246,7 +246,7 @@ void Room::channel_removed(np1sec::Channel* channel)
 inline
 void Room::joined_channel(np1sec::Channel* channel)
 {
-    inform("Room::joined_channel ", ((size_t) channel));
+    inform("Room::joined_channel ", size_t(channel));
     //auto ch = _channels->find_channel(size_t(channel));
     //assert(ch);
     //ch->add_member(_username);

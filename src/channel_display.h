@@ -44,6 +44,7 @@ public:
         {}
 
         void add_member(const std::string&);
+        void remove_member(const std::string&);
 
         private:
         ChannelDisplay& _display;
@@ -70,6 +71,8 @@ public:
     void erase(size_t channel);
 
     Channel* find_channel(size_t channel);
+
+    void remove_member(size_t channel_id, const std::string& member);
 
 private:
     static GtkWidget* get_nth_child(gint n, GtkContainer* c);
@@ -112,6 +115,42 @@ void ChannelDisplay<CD>::Channel::add_member(const std::string& member) {
                        -1);
 
     expand(_display._tree_store, _display._tree_view, iter);
+}
+
+template<class CD>
+inline
+void ChannelDisplay<CD>::Channel::remove_member(const std::string& member) {
+    GtkTreeIter iter;
+    gboolean valid = gtk_tree_model_iter_children(GTK_TREE_MODEL(_display._tree_store), &iter, &_tree_iterator);
+
+    std::cout << "remove member " << member << std::endl;
+    while (valid) {
+        const char* name;
+
+        gtk_tree_model_get(GTK_TREE_MODEL(_display._tree_store), &iter
+                          , COL_NAME, &name
+                          , -1);
+
+        if (name == member) {
+            valid = gtk_tree_store_remove(_display._tree_store, &iter);
+            std::cout << "   1 " << name << std::endl;
+        }
+        else {
+            valid = gtk_tree_model_iter_next(GTK_TREE_MODEL(_display._tree_store), &iter);
+            std::cout << "   2 " << name << std::endl;
+        }
+    }
+}
+
+template<class CD>
+inline
+void ChannelDisplay<CD>::remove_member(size_t channel_id, const std::string& member) {
+    auto channel_i = _channels.find(channel_id);
+    if (channel_i == _channels.end()) {
+        assert(0);
+        return;
+    }
+    channel_i->second.remove_member(member);
 }
 
 template<class CD> inline void ChannelDisplay<CD>::erase(size_t channel)
