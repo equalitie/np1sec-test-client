@@ -51,7 +51,7 @@ private:
      * and will need to change it back in the destructor.
      */
     GtkPaned* _target;
-    GtkWidget* _userlist;
+    GtkWidget* _vpaned;
 };
 
 } // np1sec_plugin namespace
@@ -107,26 +107,26 @@ inline RoomView::RoomView(PurpleConversation* conv)
 
     _target = GTK_PANED(target);
 
-    _userlist = gtk_paned_get_child2(_target);
+    GtkWidget* userlist = gtk_paned_get_child2(_target);
 
-    g_object_ref(_userlist);
-    auto unref_userlist = defer([ul = _userlist] { g_object_unref(ul); });
+    g_object_ref(userlist);
+    auto unref_userlist = defer([ul = userlist] { g_object_unref(ul); });
 
-    gtk_container_remove(GTK_CONTAINER(target), _userlist);
+    gtk_container_remove(GTK_CONTAINER(target), userlist);
 
-	GtkWidget* vpaned = gtk_vpaned_new();
-    gtk_paned_pack2(_target, vpaned, TRUE, TRUE);
+    _vpaned = gtk_vpaned_new();
+    gtk_paned_pack2(_target, _vpaned, TRUE, TRUE);
 
-	gtk_widget_show(vpaned);
+    gtk_widget_show(_vpaned);
 
-	gtk_paned_pack1(GTK_PANED(vpaned), _userlist, TRUE, TRUE);
+    gtk_paned_pack1(GTK_PANED(_vpaned), userlist, TRUE, TRUE);
 
     GtkWidget* tree_view = gtk_tree_view_new();
-	gtk_paned_pack2(GTK_PANED(vpaned), tree_view, TRUE, TRUE);
+    gtk_paned_pack2(GTK_PANED(_vpaned), tree_view, TRUE, TRUE);
 
     // TODO: Not sure why the value of 1 gives a good result
-	gtk_widget_set_size_request(vpaned, 1, -1);
-	gtk_widget_show(tree_view);
+    gtk_widget_set_size_request(_vpaned, 1, -1);
+    gtk_widget_show(tree_view);
 
     _tree_view = GTK_TREE_VIEW(tree_view);
 
@@ -145,12 +145,18 @@ inline RoomView::~RoomView()
 {
     g_object_unref(_tree_store);
 
-    g_object_ref(_userlist);
-    auto unref_userlist = defer([ul = _userlist] { g_object_unref(ul); });
+    // Remove the channel list and add the userlist back as it was.
+    GtkWidget* userlist = gtk_paned_get_child1(GTK_PANED(_vpaned));
 
-    gtk_container_remove(GTK_CONTAINER(_target), gtk_paned_get_child2(_target));
+    g_object_ref(userlist);
+    auto unref_userlist = defer([ul = userlist] { g_object_unref(ul); });
 
-    gtk_paned_pack2(_target, _userlist, TRUE, TRUE);
+    gtk_container_remove(GTK_CONTAINER(_vpaned), userlist);
+    gtk_container_remove(GTK_CONTAINER(_target), _vpaned);
+
+    gtk_paned_pack2(_target, userlist, FALSE, TRUE);
+    gtk_widget_show(GTK_WIDGET(_target));
+    gtk_widget_show(GTK_WIDGET(userlist));
 }
 
 inline
