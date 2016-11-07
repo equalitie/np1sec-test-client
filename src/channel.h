@@ -31,6 +31,9 @@
 #include "src/crypto.h"
 #include "src/channel.h"
 
+/* plugin headers */
+#include "user_view.h"
+
 namespace np1sec_plugin {
 
 class Room;
@@ -38,13 +41,23 @@ class Room;
 class Channel final : public np1sec::ChannelInterface {
     using PublicKey = np1sec::PublicKey;
 
-	public:
+public:
+    using Id = np1sec::Channel*;
+
+public:
     np1sec::Channel* delegate;
-    Room& room;
 
-    Channel(np1sec::Channel* delegate, Room& room) : delegate(delegate), room(room) {}
+    Channel(np1sec::Channel*, Room&);
 
-	public:
+    Channel(const Channel&) = delete;
+    Channel& operator=(const Channel&) = delete;
+
+    Channel(Channel&&) = default;
+    Channel& operator=(Channel&&) = default;
+
+    void add_member(const std::string&);
+
+public:
 	/*
 	 * A user joined this channel. No cryptographic identity is known yet.
 	 */
@@ -95,8 +108,13 @@ class Channel final : public np1sec::ChannelInterface {
 	// DEBUG
 	void dump() override;
 
-    private:
+private:
     size_t channel_id() const { return size_t(delegate); }
+
+private:
+    Room& _room;
+    ChannelView _view;
+    std::map<std::string, std::unique_ptr<UserView>> _users;
 };
 
 } // np1sec_plugin namespace
@@ -109,48 +127,59 @@ namespace np1sec_plugin {
 //------------------------------------------------------------------------------
 // Implementation
 //------------------------------------------------------------------------------
+Channel::Channel(np1sec::Channel* delegate, Room& room)
+    : delegate(delegate)
+    , _room(room)
+    , _view(_room.get_view(), std::to_string(size_t(delegate)))
+{
+}
+
+void Channel::add_member(const std::string& username)
+{
+    assert(_users.count(username) == 0);
+    _users.emplace(username, std::make_unique<UserView>(_view, username));
+}
+
 void Channel::user_joined(const std::string& username)
 {
-    room.inform("Channel::user_joined(", channel_id(), ", ", username, ")");
-    auto channel = room.find_channel(size_t(delegate));
-    assert(channel);
-    channel->add_member(username);
+    _room.inform("Channel::user_joined(", channel_id(), ", ", username, ")");
+    add_member(username);
 }
 
 void Channel::user_left(const std::string& username)
 {
-    room.inform("Channel::user_left(", channel_id(), ", ", username, ")");
-    room.remove_member(channel_id(), username);
+    _room.inform("Channel::user_left(", channel_id(), ", ", username, ")");
+    _users.erase(username);
 }
 
 void Channel::user_authenticated(const std::string& username, const PublicKey& public_key)
 {
-    room.inform("Channel::user_authenticated(", channel_id(), ", ", username, ")");
+    _room.inform("Channel::user_authenticated(", channel_id(), ", ", username, ")");
 }
 
 void Channel::user_authentication_failed(const std::string& username)
 {
-    room.inform("Channel::user_authentication_failed(", channel_id(), ", ", username, ")");
+    _room.inform("Channel::user_authentication_failed(", channel_id(), ", ", username, ")");
 }
 
 void Channel::user_authorized_by(const std::string& user, const std::string& target)
 {
-    room.inform("Channel::user_authorized_id(", channel_id(), ", ", user, ")");
+    _room.inform("Channel::user_authorized_id(", channel_id(), ", ", user, ")");
 }
 
 void Channel::user_promoted(const std::string& username)
 {
-    room.inform("Channel::user_promoted(", channel_id(), ", ", username, ")");
+    _room.inform("Channel::user_promoted(", channel_id(), ", ", username, ")");
 }
 
 void Channel::joined()
 {
-    room.inform("Channel::joined(", channel_id(), ")");
+    _room.inform("Channel::joined(", channel_id(), ")");
 }
 
 void Channel::authorized()
 {
-    room.inform("Channel::authorized(", channel_id(), ")");
+    _room.inform("Channel::authorized(", channel_id(), ")");
 }
 
 
@@ -159,7 +188,7 @@ void Channel::authorized()
 // DEBUG
 void Channel::dump()
 {
-    room.inform("Channel::dump(", channel_id(), ")");
+    _room.inform("Channel::dump(", channel_id(), ")");
 }
 
 } // np1sec_plugin namespace

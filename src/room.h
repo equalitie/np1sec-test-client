@@ -32,7 +32,7 @@
 #include "src/room.h"
 
 /* Plugin headers */
-#include "channel_display.h"
+#include "room_view.h"
 
 namespace np1sec_plugin {
 
@@ -65,11 +65,12 @@ public:
 
     template<class... Args> void inform(Args&&... args);
 
-    ChannelDisplay<Channel>::Channel* find_channel(size_t id) { return _channels->find_channel(id); }
+    //ChannelDisplay<Channel>::Channel* find_channel(size_t id) { return _channels->find_channel(id); }
 
-    void remove_member(size_t channel_id, const std::string& member) {
-        _channels->remove_member(channel_id, member);
-    }
+    //void remove_member(np1sec::Channel*, const std::string& member);
+
+    RoomView& get_view() { return _room_view; }
+
 private:
     void display(const std::string& message);
     void display(const std::string& sender, const std::string& message);
@@ -93,8 +94,9 @@ private:
     bool interpret_as_command(const std::string&);
 
     //void add_user_to_channel(size_t channel, const std::string& username);
-
 private:
+    using ChannelMap = std::map<np1sec::Channel*, std::unique_ptr<Channel>>;
+
     PurpleConversation *_conv;
     PurpleAccount *_account;
     std::string _username;
@@ -102,7 +104,8 @@ private:
     np1sec::PrivateKey _private_key;
 
     std::set<TimerToken*> _timer_tokens;
-    std::unique_ptr<ChannelDisplay<Channel>> _channels;
+    RoomView _room_view;
+    ChannelMap _channels;
 };
 
 } // np1sec_plugin namespace
@@ -121,8 +124,8 @@ Room::Room(PurpleConversation* conv)
     , _account(conv->account)
     , _username(sanitize_name(_account->username))
     , _private_key(np1sec::PrivateKey::generate())
+    , _room_view(conv)
 {
-    _channels = ChannelDisplay<Channel>::create_new_in(conv);
 }
 
 inline
@@ -181,10 +184,9 @@ bool Room::interpret_as_command(const std::string& cmd)
             auto channel_id_str = parse<string>(p);
             np1sec::Channel* channel = nullptr;
             try {
-                auto channel_id = std::stoi(channel_id_str);
-                channel = reinterpret_cast<np1sec::Channel*>(channel_id);
+                auto* channel_id = reinterpret_cast<np1sec::Channel*>(std::stoi(channel_id_str));
 
-                if (!_channels->exists(size_t(channel))) {
+                if (_channels.count(channel_id) == 0) {
                     throw std::exception();
                 }
             } catch(...) {
@@ -228,19 +230,26 @@ Room::new_channel(np1sec::Channel* channel)
     inform("Room::new_channel(</b>", size_t(channel),
            "<b>) with participants: ", encode_range(users));
 
-    auto& result = _channels->create(size_t(channel), Channel(channel, *this));
-
-    for (const auto user : users) {
-        result.add_member(user);
+    if (_channels.count(channel) != 0) {
+        assert(0);
+        return nullptr;
     }
 
-    return &result.data;
+    auto result = _channels.emplace(channel, std::make_unique<Channel>(channel, *this));
+
+    auto& ch = result.first->second;
+
+    for (const auto user : users) {
+        ch->add_member(user);
+    }
+
+    return ch.get();
 }
 
 inline
 void Room::channel_removed(np1sec::Channel* channel)
 {
-    _channels->erase(size_t(channel));
+    _channels.erase(channel);
 }
 
 inline
