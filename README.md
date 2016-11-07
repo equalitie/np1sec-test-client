@@ -1,6 +1,7 @@
 # Dependencies
 ```
 libboost1.58-dev
+libgtk2.0-dev
 pidgin-dev
 ```
 
