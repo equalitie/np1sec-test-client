@@ -89,7 +89,6 @@ private:
 
     bool interpret_as_command(const std::string&);
 
-    //void add_user_to_channel(size_t channel, const std::string& username);
 private:
     using ChannelMap = std::map<np1sec::Channel*, std::unique_ptr<Channel>>;
 
@@ -99,7 +98,6 @@ private:
     std::unique_ptr<np1sec::Room> _room;
     np1sec::PrivateKey _private_key;
 
-    std::set<TimerToken*> _timer_tokens;
     RoomView _room_view;
     ChannelMap _channels;
 };

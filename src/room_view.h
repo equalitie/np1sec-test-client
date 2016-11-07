@@ -44,6 +44,14 @@ private:
 
     GtkTreeView* _tree_view;
     GtkTreeStore* _tree_store;
+
+    /*
+     * This is a pointer to the widget that holds the output
+     * window and the user list. We modify it in the constructor
+     * and will need to change it back in the destructor.
+     */
+    GtkPaned* _target;
+    GtkWidget* _userlist;
 };
 
 } // np1sec_plugin namespace
@@ -97,19 +105,21 @@ inline RoomView::RoomView(PurpleConversation* conv)
         return;
     }
 
-    GtkWidget* userlist = gtk_paned_get_child2(GTK_PANED(target));
+    _target = GTK_PANED(target);
 
-    g_object_ref(userlist);
-    auto unref_userlist = defer([userlist] { g_object_unref(userlist); });
+    _userlist = gtk_paned_get_child2(_target);
 
-    gtk_container_remove(GTK_CONTAINER(target), userlist);
+    g_object_ref(_userlist);
+    auto unref_userlist = defer([ul = _userlist] { g_object_unref(ul); });
+
+    gtk_container_remove(GTK_CONTAINER(target), _userlist);
 
 	GtkWidget* vpaned = gtk_vpaned_new();
-    gtk_paned_pack2(GTK_PANED(target), vpaned, TRUE, TRUE);
+    gtk_paned_pack2(_target, vpaned, TRUE, TRUE);
 
 	gtk_widget_show(vpaned);
 
-	gtk_paned_pack1(GTK_PANED(vpaned), userlist, TRUE, TRUE);
+	gtk_paned_pack1(GTK_PANED(vpaned), _userlist, TRUE, TRUE);
 
     GtkWidget* tree_view = gtk_tree_view_new();
 	gtk_paned_pack2(GTK_PANED(vpaned), tree_view, TRUE, TRUE);
@@ -135,7 +145,12 @@ inline RoomView::~RoomView()
 {
     g_object_unref(_tree_store);
 
-    // TODO: Remove the tree view and vpaned (created in the constructor).
+    g_object_ref(_userlist);
+    auto unref_userlist = defer([ul = _userlist] { g_object_unref(ul); });
+
+    gtk_container_remove(GTK_CONTAINER(_target), gtk_paned_get_child2(_target));
+
+    gtk_paned_pack2(_target, _userlist, TRUE, TRUE);
 }
 
 inline

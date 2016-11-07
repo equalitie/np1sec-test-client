@@ -53,15 +53,18 @@ extern "C" {
 #define _(x) const_cast<char*>(x)
 
 //------------------------------------------------------------------------------
-static void set_conv_room(PurpleConversation* conv, np1sec_plugin::Room* room)
-{
-    g_hash_table_insert(conv->data, strdup("np1sec_plugin_room"), room);
-}
-
 static np1sec_plugin::Room* get_conv_room(PurpleConversation* conv)
 {
     auto* p =  g_hash_table_lookup(conv->data, "np1sec_plugin_room");
     return static_cast<np1sec_plugin::Room*>(p);
+}
+
+static void set_conv_room(PurpleConversation* conv, np1sec_plugin::Room* room)
+{
+    if (auto r = get_conv_room(conv)) {
+        delete r;
+    }
+    g_hash_table_insert(conv->data, strdup("np1sec_plugin_room"), room);
 }
 
 //------------------------------------------------------------------------------
@@ -141,8 +144,11 @@ void sending_chat_msg_cb(PurpleAccount *account, char **message, int id) {
 }
 
 //------------------------------------------------------------------------------
+bool signals_connected = false;
 static void setup_purple_callbacks(PurplePlugin* plugin)
 {
+    if (signals_connected) return;
+    signals_connected = true;
     void* conv_handle = purple_conversations_get_handle();
 
     purple_signal_connect(conv_handle, "conversation-created", plugin, PURPLE_CALLBACK(conversation_created_cb), NULL);
@@ -152,15 +158,65 @@ static void setup_purple_callbacks(PurplePlugin* plugin)
     purple_signal_connect(conv_handle, "sending-chat-msg", plugin, PURPLE_CALLBACK(sending_chat_msg_cb), NULL);
 }
 
+static void disconnect_purple_callbacks(PurplePlugin* plugin)
+{
+    if (!signals_connected) return;
+    signals_connected = false;
+
+    void* conv_handle = purple_conversations_get_handle();
+
+    purple_signal_disconnect(conv_handle, "conversation-created", plugin, PURPLE_CALLBACK(conversation_created_cb));
+    purple_signal_disconnect(conv_handle, "conversation-updated", plugin, PURPLE_CALLBACK(conversation_updated_cb));
+    purple_signal_disconnect(conv_handle, "deleting-conversation", plugin, PURPLE_CALLBACK(deleting_conversation_cb));
+    purple_signal_disconnect(conv_handle, "receiving-chat-msg", plugin, PURPLE_CALLBACK(receiving_chat_msg_cb));
+    purple_signal_disconnect(conv_handle, "sending-chat-msg", plugin, PURPLE_CALLBACK(sending_chat_msg_cb));
+}
+
 gboolean np1sec_plugin_load(PurplePlugin* plugin)
 {
-    std::cout << "(n+1)sec plugin loaded" << std::endl;
     setup_purple_callbacks(plugin);
+
+    //---------------------------------------------------
+    // Apply the plugin to chats which were created before
+    // this plugin was loaded.
+	GList *convs = purple_get_conversations();
+
+	while (convs) {
+
+		PurpleConversation *conv = (PurpleConversation *)convs->data;
+
+        if (!get_conv_room(conv)) {
+            auto* room = new np1sec_plugin::Room(conv);
+            set_conv_room(conv, room);
+        }
+
+		convs = convs->next;
+	}
+
+    //---------------------------------------------------
+
+    std::cout << "(n+1)sec plugin loaded" << std::endl;
+
     return true;
 }
 
 gboolean np1sec_plugin_unload(PurplePlugin* plugin)
 {
+    disconnect_purple_callbacks(plugin);
+
+	GList *convs = purple_get_conversations();
+
+	while (convs) {
+
+		PurpleConversation *conv = (PurpleConversation *)convs->data;
+
+        set_conv_room(conv, nullptr);
+
+		convs = convs->next;
+	}
+
+    g_conversations.clear();
+
     std::cout << "(n+1)sec plugin unloaded" << std::endl;
     return true;
 }
