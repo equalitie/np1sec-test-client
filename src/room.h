@@ -30,11 +30,21 @@
 #include "timer.h"
 #include "toolbar.h"
 
+#ifndef _NDEBUG
+#   include "debug_proxy.h"
+#endif
+
 namespace np1sec_plugin {
 
 class Channel;
 
 struct Room final : private np1sec::RoomInterface {
+#ifndef _NDEBUG
+    using Np1SecRoom = DebugProxy;
+#else
+    using Np1SecRoom = np1sec::Room;
+#endif
+
 public:
     Room(PurpleConversation* conv);
 
@@ -86,7 +96,7 @@ private:
 
     Toolbar _toolbar;
 
-    std::unique_ptr<np1sec::Room> _room;
+    std::unique_ptr<Np1SecRoom> _room;
 };
 
 } // np1sec_plugin namespace
@@ -122,7 +132,7 @@ void Room::start()
 {
     if (started()) return;
 
-    _room.reset(new np1sec::Room(this, _username, _private_key));
+    _room.reset(new Np1SecRoom(this, _username, _private_key));
 }
 
 inline
