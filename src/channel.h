@@ -36,8 +36,6 @@ class Channel final : public np1sec::ChannelInterface {
     using PublicKey = np1sec::PublicKey;
 
 public:
-    np1sec::Channel* delegate;
-
     Channel(np1sec::Channel*, Room&);
 
     Channel(const Channel&) = delete;
@@ -100,9 +98,11 @@ public:
     void dump() override;
 
 private:
-    size_t channel_id() const { return size_t(delegate); }
+    size_t channel_id() const { return size_t(_delegate); }
 
 private:
+    np1sec::Channel* _delegate;
+
     Room& _room;
     ChannelView _view;
     std::map<std::string, std::unique_ptr<UserView>> _users;
@@ -119,12 +119,12 @@ namespace np1sec_plugin {
 // Implementation
 //------------------------------------------------------------------------------
 Channel::Channel(np1sec::Channel* delegate, Room& room)
-    : delegate(delegate)
+    : _delegate(delegate)
     , _room(room)
-    , _view(_room.get_view(), std::to_string(size_t(delegate)))
+    , _view(_room.get_view(), std::to_string(size_t(_delegate)))
 {
     _view.on_double_click = [this] {
-        _room._room->join_channel(this->delegate);
+        _room._room->join_channel(_delegate);
     };
 }
 
@@ -147,7 +147,7 @@ void Channel::user_left(const std::string& username)
 
     if (_users.empty()) {
         // Self destruct.
-        _room._channels.erase(delegate);
+        _room._channels.erase(_delegate);
     }
 }
 
