@@ -130,13 +130,6 @@ void sending_chat_msg_cb(PurpleAccount *account, char **message, int id) {
     auto room = get_conv_room(conv_i->second);
     assert(room);
 
-    if (boost::starts_with(*message, "send_raw:")) {
-        auto m = *message;
-        *message = g_strdup(m + strlen("send_raw:"));
-        g_free(m);
-        return;
-    }
-
     room->send_chat_message(*message);
 
     g_free(*message);
@@ -188,6 +181,9 @@ gboolean np1sec_plugin_load(PurplePlugin* plugin)
         if (!get_conv_room(conv)) {
             auto* room = new np1sec_plugin::Room(conv);
             set_conv_room(conv, room);
+
+            auto id = purple_conv_chat_get_id(PURPLE_CONV_CHAT(conv));
+            g_conversations[id] = conv;
         }
 
 		convs = convs->next;

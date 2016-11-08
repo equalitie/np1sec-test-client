@@ -210,15 +210,17 @@ bool Room::interpret_as_command(const std::string& cmd)
 inline
 void Room::send_message(const std::string& message)
 {
-    // The purple_conversation_get_account function triggers the
-    // sending-chat-msg callback from where this function is also
-    // called. To avoid an infinite loop, the callback checks
-    // whether the message starts with "send_raw:" string and
-    // if so, it just passes this function back to Purple.
-    // It's not ideal, but I haven't yet found a better way
-    // to do it.
-    auto m = "send_raw:" + message;
-    purple_conv_chat_send(PURPLE_CONV_CHAT(_conv), m.c_str());
+    /*
+     * Note: it's probably better to use this serv_chat_send function
+     * instead of purple_conv_chat_send(PURPLE_CONV_CHAT(_conv), m.c_str()).
+     * The latter would trigger the sending-chat-msg callback which
+     * - again - calls this function. Thus we'd need an additional
+     * mechanism to break this loop.
+     */
+    serv_chat_send( purple_conversation_get_gc(_conv)
+                  , purple_conv_chat_get_id(PURPLE_CONV_CHAT(_conv))
+                  , message.c_str()
+                  , PURPLE_MESSAGE_SEND);
 }
 
 inline
