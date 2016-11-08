@@ -136,14 +136,26 @@ void sending_chat_msg_cb(PurpleAccount *account, char **message, int id) {
     *message = NULL;
 }
 
+static
+void chat_buddy_left_cb(PurpleConversation* conv, const char* name, const char*, void*)
+{
+    auto room = get_conv_room(conv);
+    assert(room);
+    if (!room) return;
+    room->user_left(name);
+}
+
 //------------------------------------------------------------------------------
-bool signals_connected = false;
+bool g_signals_connected = false;
+
 static void setup_purple_callbacks(PurplePlugin* plugin)
 {
-    if (signals_connected) return;
-    signals_connected = true;
+    if (g_signals_connected) return;
+    g_signals_connected = true;
+
     void* conv_handle = purple_conversations_get_handle();
 
+	purple_signal_connect(conv_handle, "chat-buddy-left", plugin, PURPLE_CALLBACK(chat_buddy_left_cb), NULL);
     purple_signal_connect(conv_handle, "conversation-created", plugin, PURPLE_CALLBACK(conversation_created_cb), NULL);
     purple_signal_connect(conv_handle, "conversation-updated", plugin, PURPLE_CALLBACK(conversation_updated_cb), NULL);
     purple_signal_connect(conv_handle, "deleting-conversation", plugin, PURPLE_CALLBACK(deleting_conversation_cb), NULL);
@@ -153,11 +165,12 @@ static void setup_purple_callbacks(PurplePlugin* plugin)
 
 static void disconnect_purple_callbacks(PurplePlugin* plugin)
 {
-    if (!signals_connected) return;
-    signals_connected = false;
+    if (!g_signals_connected) return;
+    g_signals_connected = false;
 
     void* conv_handle = purple_conversations_get_handle();
 
+	purple_signal_disconnect(conv_handle, "chat-buddy-left", plugin, PURPLE_CALLBACK(chat_buddy_left_cb));
     purple_signal_disconnect(conv_handle, "conversation-created", plugin, PURPLE_CALLBACK(conversation_created_cb));
     purple_signal_disconnect(conv_handle, "conversation-updated", plugin, PURPLE_CALLBACK(conversation_updated_cb));
     purple_signal_disconnect(conv_handle, "deleting-conversation", plugin, PURPLE_CALLBACK(deleting_conversation_cb));

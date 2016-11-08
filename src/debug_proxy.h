@@ -61,6 +61,10 @@ public:
         exec("message_received", [&] { delegate->message_received(sender, msg); });
     }
 
+    void user_left(const std::string& user) {
+        exec("user_left", [&] { delegate->user_left(user); });
+    }
+
 private:
     float diff_in_secs(clock::time_point start, clock::time_point end)
     {

@@ -58,6 +58,10 @@ public:
 
     RoomView& get_view() { return _room_view; }
 
+    const std::string& username() const { return _username; }
+
+    void user_left(const std::string&);
+
 private:
     void display(const std::string& message);
     void display(const std::string& sender, const std::string& message);
@@ -143,6 +147,12 @@ void Room::send_chat_message(const std::string& message)
     }
 
     _room->send_message(message);
+}
+
+inline
+void Room::user_left(const std::string& user)
+{
+    _room->user_left(user);
 }
 
 inline
