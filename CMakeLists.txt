@@ -12,7 +12,7 @@ set(PIDGIN_INC_DIR "/usr/include" CACHE FILEPATH "pidgin dir")
 find_package(Boost ${BOOST_VERSION} COMPONENTS REQUIRED)
 # Use the package PkgConfig to detect GTK+ headers/library files
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(GTK3 REQUIRED gtk+-2.0)
+pkg_check_modules(GTK2 REQUIRED gtk+-2.0)
 
 include_directories(
   "${Boost_INCLUDE_DIR}"
@@ -20,7 +20,7 @@ include_directories(
   "${PIDGIN_INC_DIR}/pidgin"
   "${PIDGIN_INC_DIR}/libpurple"
   "${NP1SEC_INC_DIR}"
-  "${GTK3_INCLUDE_DIRS}"
+  "${GTK2_INCLUDE_DIRS}"
 )
 
 file(GLOB sources
