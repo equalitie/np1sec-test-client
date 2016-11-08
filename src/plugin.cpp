@@ -181,8 +181,10 @@ gboolean np1sec_plugin_load(PurplePlugin* plugin)
         if (!get_conv_room(conv)) {
             auto* room = new np1sec_plugin::Room(conv);
             set_conv_room(conv, room);
+            room->start();
 
             auto id = purple_conv_chat_get_id(PURPLE_CONV_CHAT(conv));
+            assert (g_conversations.count(id) == 0);
             g_conversations[id] = conv;
         }
 
