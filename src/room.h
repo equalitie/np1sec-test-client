@@ -28,6 +28,7 @@
 /* Plugin headers */
 #include "room_view.h"
 #include "timer.h"
+#include "toolbar.h"
 
 namespace np1sec_plugin {
 
@@ -83,6 +84,8 @@ private:
     RoomView _room_view;
     ChannelMap _channels;
 
+    Toolbar _toolbar;
+
     std::unique_ptr<np1sec::Room> _room;
 };
 
@@ -103,7 +106,15 @@ Room::Room(PurpleConversation* conv)
     , _username(sanitize_name(_account->username))
     , _private_key(np1sec::PrivateKey::generate())
     , _room_view(conv)
+    , _toolbar(PIDGIN_CONVERSATION(conv))
 {
+    _toolbar.on_create_channel_clicked = [this] {
+        _room->create_channel();
+    };
+
+    _toolbar.on_search_channel_clicked = [this] {
+        _room->search_channels();
+    };
 }
 
 inline
