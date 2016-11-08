@@ -16,12 +16,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-/* As per libpurple documentation:
- * Failure to have #define PURPLE_PLUGINS in your source file leads
- * to very strange errors that are difficult to diagnose. Just don't
- * forget to do it!
- */
-
 #pragma once
 
 #include <memory>

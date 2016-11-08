@@ -16,12 +16,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-/* As per libpurple documentation:
- * Failure to have #define PURPLE_PLUGINS in your source file leads
- * to very strange errors that are difficult to diagnose. Just don't
- * forget to do it!
- */
-
 #pragma once
 
 #include <memory>
@@ -33,27 +27,13 @@
 
 /* Plugin headers */
 #include "room_view.h"
+#include "timer.h"
 
 namespace np1sec_plugin {
 
 class Channel;
 
 struct Room final : private np1sec::RoomInterface {
-    struct TimerToken final : public np1sec::TimerToken {
-        guint timer_id;
-        np1sec::TimerCallback* callback;
-
-        void unset() override {
-            g_source_remove(timer_id);
-            timer_id = 0;
-            delete this;
-        }
-
-        ~TimerToken() {
-            if (timer_id != 0) g_source_remove(timer_id);
-        }
-    };
-
 public:
     Room(PurpleConversation* conv);
 
@@ -97,11 +77,13 @@ private:
     PurpleConversation *_conv;
     PurpleAccount *_account;
     std::string _username;
-    std::unique_ptr<np1sec::Room> _room;
+    TimerToken::Storage _timers;
     np1sec::PrivateKey _private_key;
 
     RoomView _room_view;
     ChannelMap _channels;
+
+    std::unique_ptr<np1sec::Room> _room;
 };
 
 } // np1sec_plugin namespace
@@ -306,34 +288,7 @@ std::string Room::sanitize_name(std::string name)
 inline
 np1sec::TimerToken*
 Room::set_timer(uint32_t interval_ms, np1sec::TimerCallback* callback) {
-    // TODO: I need to store these tokens somewhere so that I can
-    //       can destroy them if neither the timer was fired nor
-    //       TimerToken::unset was called (could happen when this
-    //       destructs).
-    auto timer_token = new TimerToken;
-
-    auto timer_id = g_timeout_add(interval_ms, execute_timer_callback, timer_token);
-
-    timer_token->timer_id = timer_id;
-    timer_token->callback = callback;
-
-    return timer_token;
-}
-
-inline
-gboolean Room::execute_timer_callback(gpointer gp_data)
-{
-    auto* token = reinterpret_cast<TimerToken*>(gp_data);
-
-    auto callback = token->callback;
-
-    token->timer_id = 0;
-    delete token;
-
-    callback->execute();
-
-    // Returning 0 stops the timer.
-    return 0;
+    return new TimerToken(_timers, interval_ms, callback);
 }
 
 } // namespace
