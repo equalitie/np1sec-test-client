@@ -44,10 +44,14 @@ public:
     ChannelView(ChannelView&&) = delete;
     ChannelView& operator=(ChannelView&&) = delete;
 
+    std::function<void()> on_double_click;
+
     const std::string& name() const { return _name; }
 
     ~ChannelView();
+
 private:
+    std::string path() const;
 
 private:
     RoomView& _room;
@@ -71,10 +75,27 @@ inline ChannelView::ChannelView(RoomView& room, const std::string& name)
     gtk_tree_store_set(_room._tree_store, &_iter,
                        COL_NAME, _name.c_str(),
                        -1);
+
+    _room._double_click_callbacks[path()] = [this] {
+        if (on_double_click) on_double_click();
+    };
+}
+
+inline
+std::string ChannelView::path() const
+{
+    gchar* c_str = gtk_tree_model_get_string_from_iter
+        ( GTK_TREE_MODEL(_room._tree_store)
+        , const_cast<GtkTreeIter*>(&_iter));
+
+    auto free_str = defer([c_str] { g_free(c_str); });
+
+    return std::string(c_str);
 }
 
 inline ChannelView::~ChannelView()
 {
+    _room._double_click_callbacks.erase(path());
     gtk_tree_store_remove(_room._tree_store, &_iter);
 }
 

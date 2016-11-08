@@ -37,6 +37,13 @@ public:
 
 private:
     static GtkWidget* get_nth_child(gint n, GtkContainer* c);
+    void setup_callbacks(GtkTreeView* tree_view);
+
+    static
+    void on_double_click( GtkTreeView *tree_view
+                        , GtkTreePath *path
+                        , GtkTreeViewColumn *column
+                        , RoomView* v);
 
 private:
     friend class ChannelView;
@@ -44,6 +51,10 @@ private:
 
     GtkTreeView* _tree_view;
     GtkTreeStore* _tree_store;
+
+    //            +--> Path in the tree
+    //            |
+    std::map<std::string, std::function<void()>> _double_click_callbacks;
 
     /*
      * This is a pointer to the widget that holds the output
@@ -139,6 +150,8 @@ inline RoomView::RoomView(PurpleConversation* conv)
 
     _tree_store = gtk_tree_store_new (ChannelView::NUM_COLS, G_TYPE_STRING);
     gtk_tree_view_set_model(_tree_view, GTK_TREE_MODEL(_tree_store));
+
+    setup_callbacks(_tree_view);
 }
 
 inline RoomView::~RoomView()
@@ -157,6 +170,30 @@ inline RoomView::~RoomView()
     gtk_paned_pack2(_target, userlist, FALSE, TRUE);
     gtk_widget_show(GTK_WIDGET(_target));
     gtk_widget_show(GTK_WIDGET(userlist));
+}
+
+void RoomView::on_double_click( GtkTreeView *tree_view
+                              , GtkTreePath *path
+                              , GtkTreeViewColumn *column
+                              , RoomView* v)
+{
+    gchar* c_str = gtk_tree_path_to_string(path);
+    auto free_str = defer([c_str] { g_free(c_str); });
+
+    auto cb_i = v->_double_click_callbacks.find(c_str);
+
+    if (cb_i == v->_double_click_callbacks.end()) {
+        return;
+    }
+
+    cb_i->second();
+}
+
+inline
+void RoomView::setup_callbacks(GtkTreeView* tree_view)
+{
+	g_signal_connect(GTK_WIDGET(tree_view), "row-activated",
+					 (GCallback) on_double_click, this);
 }
 
 inline

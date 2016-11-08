@@ -123,6 +123,9 @@ Channel::Channel(np1sec::Channel* delegate, Room& room)
     , _room(room)
     , _view(_room.get_view(), std::to_string(size_t(delegate)))
 {
+    _view.on_double_click = [this] {
+        _room._room->join_channel(this->delegate);
+    };
 }
 
 void Channel::add_member(const std::string& username)
