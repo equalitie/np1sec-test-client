@@ -62,6 +62,8 @@ public:
 
     void user_left(const std::string&);
 
+    GtkWindow* gtk_window() const;
+
 private:
     void display(const std::string& message);
     void display(const std::string& sender, const std::string& message);
@@ -268,6 +270,16 @@ inline
 void Room::joined_channel(np1sec::Channel* channel)
 {
     inform("Room::joined_channel ", size_t(channel));
+
+    auto channel_i = _channels.find(channel);
+
+    if (channel_i == _channels.end()) {
+        assert(0 && "Joined a non existent channel");
+        return;
+    }
+
+    auto& ch = *channel_i->second;
+    ch.set_user_public_key(_username, _private_key.public_key());
 }
 
 inline
@@ -322,6 +334,11 @@ inline
 np1sec::TimerToken*
 Room::set_timer(uint32_t interval_ms, np1sec::TimerCallback* callback) {
     return new TimerToken(_timers, interval_ms, callback);
+}
+
+inline
+GtkWindow* Room::gtk_window() const {
+    return GTK_WINDOW(PIDGIN_CONVERSATION(_conv)->win->window);
 }
 
 } // namespace

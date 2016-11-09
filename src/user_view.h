@@ -35,6 +35,8 @@ public:
     UserView(UserView&&) = delete;
     UserView& operator=(UserView&&) = delete;
 
+    PopupActions popup_actions;
+
 private:
     void expand(GtkTreeIter& iter);
 
@@ -63,6 +65,12 @@ UserView::UserView(ChannelView& channel, const std::string& name)
                        -1);
 
     expand(_iter);
+
+    auto path = util::tree_iter_to_path(_iter, _channel._room._tree_store);
+
+    _channel._room._show_popup_callbacks[path] = [this] (GdkEventButton* e) {
+        show_popup(e, popup_actions);
+    };
 }
 
 UserView::~UserView() {

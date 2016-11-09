@@ -20,17 +20,16 @@
 
 #include <memory>
 #include <iostream>
+#include <boost/optional.hpp>
 
 /* np1sec headers */
 #include "src/crypto.h"
 #include "src/channel.h"
 
-/* plugin headers */
-#include "user_view.h"
-
 namespace np1sec_plugin {
 
 class Room;
+class User;
 
 class Channel final : public np1sec::ChannelInterface {
     using PublicKey = np1sec::PublicKey;
@@ -45,6 +44,7 @@ public:
     Channel& operator=(Channel&&) = default;
 
     void add_member(const std::string&);
+    void set_user_public_key(const std::string& username, const PublicKey&);
 
 public:
     /*
@@ -101,17 +101,20 @@ private:
     size_t channel_id() const { return size_t(_delegate); }
 
 private:
+    friend class User;
+
     np1sec::Channel* _delegate;
 
     Room& _room;
     ChannelView _view;
-    std::map<std::string, std::unique_ptr<UserView>> _users;
+    std::map<std::string, std::unique_ptr<User>> _users;
 };
 
 } // np1sec_plugin namespace
 
 /* plugin headers */
 #include "room.h"
+#include "user.h"
 
 namespace np1sec_plugin {
 
@@ -128,10 +131,24 @@ Channel::Channel(np1sec::Channel* delegate, Room& room)
     };
 }
 
-void Channel::add_member(const std::string& username)
+void Channel::set_user_public_key(const std::string& username, const PublicKey& public_key)
+{
+    auto user_i = _users.find(username);
+
+    if (user_i == _users.end()) {
+        assert(0 && "Authenticated user is not in the channel");
+        return;
+    }
+
+    user_i->second->public_key = public_key;
+}
+
+void Channel::add_member( const std::string& username)
 {
     assert(_users.count(username) == 0);
-    _users.emplace(username, std::make_unique<UserView>(_view, username));
+
+    _users.emplace(username,
+                   std::make_unique<User>(*this, username));
 }
 
 void Channel::user_joined(const std::string& username)
@@ -154,6 +171,7 @@ void Channel::user_left(const std::string& username)
 void Channel::user_authenticated(const std::string& username, const PublicKey& public_key)
 {
     _room.inform("Channel::user_authenticated(", channel_id(), ", ", username, ")");
+    set_user_public_key(username, public_key);
 }
 
 void Channel::user_authentication_failed(const std::string& username)
