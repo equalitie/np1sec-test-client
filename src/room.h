@@ -243,7 +243,7 @@ Room::new_channel(np1sec::Channel* channel)
            "<b>) with participants: ", encode_range(users));
 
     if (_channels.count(channel) != 0) {
-        assert(0);
+        assert(0 && "Channel already present");
         return nullptr;
     }
 
