@@ -21,7 +21,7 @@ cd <np1sec-test-client dir>
 mkdir -p build
 cd build
 cmake .. -DNP1SEC_LIB_DIR=<where libnp1sec.so can be found> \
-         -DNP1SEC_INCLUDE_DIR=<where np1sec headers can be found>
+         -DNP1SEC_INC_DIR=<where np1sec headers can be found>
 make
 ```
 
@@ -62,7 +62,7 @@ cd <np1sec-test-client dir>
 mkdir -p build
 cd build
 cmake .. -DNP1SEC_LIB_DIR=<where libnp1sec.so can be found> \
-         -DNP1SEC_INCLUDE_DIR=<where np1sec headers can be found>
+         -DNP1SEC_INC_DIR=<where np1sec headers can be found>
 make
 ```
 
