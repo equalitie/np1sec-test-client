@@ -180,6 +180,7 @@ bool Room::interpret_as_command(const std::string& cmd)
                    "&nbsp;&nbsp;&nbsp;&nbsp;whoami<br>"
                    "&nbsp;&nbsp;&nbsp;&nbsp;search-channels<br>"
                    "&nbsp;&nbsp;&nbsp;&nbsp;create-channel<br>"
+                   "&nbsp;&nbsp;&nbsp;&nbsp;authorize &lt;user&gt;<br>"
                    "&nbsp;&nbsp;&nbsp;&nbsp;join-channel &lt;channel-id&gt;<br>");
         }
         else if (c == "whoami") {
@@ -187,6 +188,10 @@ bool Room::interpret_as_command(const std::string& cmd)
         }
         else if (c == "search-channels") {
             _room->search_channels();
+        }
+        else if (c == "authorize") {
+            auto user = parse<string>(p);
+            _room->authorize(user);
         }
         else if (c == "create-channel") {
             _room->create_channel();

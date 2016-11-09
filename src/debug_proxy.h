@@ -65,6 +65,10 @@ public:
         exec("user_left", [&] { delegate->user_left(user); });
     }
 
+    void authorize(const std::string& user) {
+        exec("authorize", [&] { delegate->authorize(user); });
+    }
+
 private:
     float diff_in_secs(clock::time_point start, clock::time_point end)
     {
