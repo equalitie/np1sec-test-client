@@ -53,8 +53,8 @@ public:
         exec("search_channels", [&] { delegate->search_channels(); });
     }
 
-    void send_message(const std::string& str) {
-        exec("send_message", [&] { delegate->send_message(str); });
+    void send_chat(const std::string& str) {
+        exec("send_chat", [&] { delegate->send_chat(str); });
     }
 
     void message_received(const std::string& sender, const std::string& msg) {

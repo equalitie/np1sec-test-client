@@ -146,7 +146,7 @@ void Room::send_chat_message(const std::string& message)
         return;
     }
 
-    _room->send_message(message);
+    _room->send_chat(message);
 }
 
 inline
