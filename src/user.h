@@ -36,6 +36,8 @@ public:
 
 public:
     boost::optional<np1sec::PublicKey> public_key;
+    std::set<std::string> authorized_by;
+    bool was_promoted = false;
 
 private:
     std::string _name;
@@ -56,8 +58,10 @@ User::User(Channel& channel, const std::string& name)
     : _name(name)
     , _view(channel._view, name)
 {
-    _view.popup_actions["info"] = [this, &channel] {
-        UserInfoDialog::show(channel._room.gtk_window(), *this);
+    auto gtk_window = channel._room.gtk_window();
+
+    _view.popup_actions["Info"] = [this, gtk_window] {
+        UserInfoDialog::show(gtk_window, *this);
     };
 }
 

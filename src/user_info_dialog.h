@@ -88,6 +88,9 @@ GtkWidget* UserInfoDialog::create_content(const User& user)
         append("Public key: ", "not yet known");
     }
 
+    append("Authorized by: ", util::str(user.authorized_by));
+    append("Was promoted: ", user.was_promoted ? "Yes" : "No");
+
     return vbox;
 }
 
