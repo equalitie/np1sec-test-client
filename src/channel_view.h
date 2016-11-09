@@ -19,6 +19,8 @@
 #pragma once
 
 #include "defer.h"
+#include "util.h"
+#include "popup.h"
 
 namespace np1sec_plugin {
 
@@ -45,6 +47,7 @@ public:
     ChannelView& operator=(ChannelView&&) = delete;
 
     std::function<void()> on_double_click;
+    PopupActions popup_actions;
 
     const std::string& name() const { return _name; }
 
@@ -76,21 +79,21 @@ inline ChannelView::ChannelView(RoomView& room, const std::string& name)
                        COL_NAME, _name.c_str(),
                        -1);
 
-    _room._double_click_callbacks[path()] = [this] {
+    auto p = path();
+
+    _room._double_click_callbacks[p] = [this] {
         if (on_double_click) on_double_click();
+    };
+
+    _room._show_popup_callbacks[p] = [this] (GdkEventButton* e) {
+        show_popup(e, popup_actions);
     };
 }
 
 inline
 std::string ChannelView::path() const
 {
-    gchar* c_str = gtk_tree_model_get_string_from_iter
-        ( GTK_TREE_MODEL(_room._tree_store)
-        , const_cast<GtkTreeIter*>(&_iter));
-
-    auto free_str = defer([c_str] { g_free(c_str); });
-
-    return std::string(c_str);
+    return util::tree_iter_to_path(_iter, _room._tree_store);
 }
 
 inline ChannelView::~ChannelView()

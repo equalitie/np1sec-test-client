@@ -40,10 +40,13 @@ private:
     void setup_callbacks(GtkTreeView* tree_view);
 
     static
-    void on_double_click( GtkTreeView *tree_view
-                        , GtkTreePath *path
-                        , GtkTreeViewColumn *column
-                        , RoomView* v);
+    void on_double_click( GtkTreeView*
+                        , GtkTreePath*
+                        , GtkTreeViewColumn*
+                        , RoomView*);
+
+    static
+    gint on_button_pressed(GtkWidget*, GdkEventButton*, RoomView*);
 
 private:
     friend class ChannelView;
@@ -55,6 +58,7 @@ private:
     //            +--> Path in the tree
     //            |
     std::map<std::string, std::function<void()>> _double_click_callbacks;
+    std::map<std::string, std::function<void(GdkEventButton*)>> _show_popup_callbacks;
 
     /*
      * This is a pointer to the widget that holds the output
@@ -143,7 +147,7 @@ inline RoomView::RoomView(PurpleConversation* conv)
 
     gtk_tree_view_insert_column_with_attributes (_tree_view,
                                                  -1,      
-                                                 "",  
+                                                 "Channels",
                                                  gtk_cell_renderer_text_new(),
                                                  "text", ChannelView::COL_NAME,
                                                  NULL);
@@ -189,11 +193,55 @@ void RoomView::on_double_click( GtkTreeView *tree_view
     cb_i->second();
 }
 
+// Return TRUE if we handled it.
+inline
+gboolean RoomView::on_button_pressed( GtkWidget*
+                                    , GdkEventButton* event
+                                    , RoomView* v)
+{
+
+    /* Is right mouse button? */
+    if (event->type == GDK_BUTTON_PRESS && event->button == 3) {
+        GtkTreePath *path;
+        gtk_tree_view_get_path_at_pos(v->_tree_view,
+                                      event->x, event->y,
+                                      &path, NULL, NULL, NULL);
+        auto free_path = defer([path] { gtk_tree_path_free(path); });
+
+        if (path == NULL)
+            return FALSE;
+
+        GtkTreeIter iter;
+        gtk_tree_model_get_iter(GTK_TREE_MODEL(v->_tree_store), &iter, path);
+
+        auto path_str = util::tree_iter_to_path(iter, v->_tree_store);
+
+        auto action_i = v->_show_popup_callbacks.find(path_str);
+
+        if (action_i == v->_show_popup_callbacks.end())
+            return FALSE;
+
+        action_i->second(event);
+
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
 inline
 void RoomView::setup_callbacks(GtkTreeView* tree_view)
 {
-	g_signal_connect(GTK_WIDGET(tree_view), "row-activated",
-					 (GCallback) on_double_click, this);
+    g_signal_connect(GTK_WIDGET(tree_view), "row-activated",
+                     G_CALLBACK(on_double_click), this);
+
+    g_signal_connect(G_OBJECT(tree_view), "button-press-event",
+                     (GCallback) on_button_pressed, this);
+
+    // // TODO: popup-menu
+    // // http://scentric.net/tutorial/sec-selections-context-menus.html
+    // g_signal_connect(G_OBJECT(tree_view), "popup-menu",
+    //                  (GCallback) on_show_popup, this);
 }
 
 inline
