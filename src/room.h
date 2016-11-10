@@ -88,6 +88,7 @@ private:
     static std::string sanitize_name(std::string name);
 
     bool interpret_as_command(const std::string&);
+    Channel* current_channel();
 
 private:
     friend class Channel;
@@ -145,10 +146,37 @@ void Room::start()
 }
 
 inline
+Channel* Room::current_channel()
+{
+    for (const auto& c : _channels | boost::adaptors::map_values) {
+        if (c->find_user(_username)) {
+            return c.get();
+        }
+    }
+    return nullptr;
+}
+
+inline
 void Room::send_chat_message(const std::string& message)
 {
     if (interpret_as_command(message)) {
         return;
+    }
+
+    auto* ch = current_channel();
+
+    if (!ch) {
+        return inform("Not in a channel");
+    }
+
+    if (!ch->everyone_promoted_everyone()) {
+        // TODO: Current np1sec limitation (the lib crashes)
+        return inform("Not everyone authorized everyone");
+    }
+
+    if (ch->size() <= 1) {
+        // TODO: Current np1sec limitation (the lib crashes)
+        return inform("No one to send to");
     }
 
     _room->send_chat(message);
@@ -247,10 +275,8 @@ inline
 np1sec::ChannelInterface*
 Room::new_channel(np1sec::Channel* channel)
 {
-    auto users = channel->users();
-
     inform("Room::new_channel(</b>", size_t(channel),
-           "<b>) with participants: ", encode_range(users));
+           "<b>) with participants: ", encode_range(channel->users()));
 
     if (_channels.count(channel) != 0) {
         assert(0 && "Channel already present");
@@ -258,15 +284,7 @@ Room::new_channel(np1sec::Channel* channel)
     }
 
     auto result = _channels.emplace(channel, std::make_unique<Channel>(channel, *this));
-
-    auto& ch = result.first->second;
-
-    for (const auto user : users) {
-        ch->add_member(user);
-        ch->promote_user(user);
-    }
-
-    return ch.get();
+    return result.first->second.get();
 }
 
 inline

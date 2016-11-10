@@ -20,13 +20,13 @@
 
 #include "src/crypto.h"
 #include "popup.h"
-#include "user_view.h"
 
 #include <boost/optional.hpp>
 
 namespace np1sec_plugin {
 
 class Channel;
+class UserView;
 
 class User {
 public:
@@ -36,17 +36,25 @@ public:
 
 public:
     boost::optional<np1sec::PublicKey> public_key;
-    std::set<std::string> authorized_by;
-    bool was_promoted = false;
+    const std::set<std::string>& authorized_by() const { return _authorized_by; }
+
+    void authorized_by(std::string name);
+    void set_promoted(bool);
+    bool was_promoted() const;
+    bool is_myself() const { return _is_myself; }
 
 private:
     std::string _name;
-    UserView _view;
+    bool _is_myself;
+    bool _was_promoted = false;
+    std::set<std::string> _authorized_by;
+    std::unique_ptr<UserView> _view;
 };
 
 } // np1sec_plugin namespace
 
 #include "channel.h"
+#include "user_view.h"
 #include "user_info_dialog.h"
 
 namespace np1sec_plugin {
@@ -56,21 +64,38 @@ namespace np1sec_plugin {
 inline
 User::User(Channel& channel, const std::string& name)
     : _name(name)
-    , _view(channel._view, name)
+    , _is_myself(name == channel._room.username())
+    , _authorized_by({name})
+    , _view(new UserView(channel._view, *this))
 {
     auto gtk_window = channel._room.gtk_window();
 
-    _view.popup_actions["Info"] = [this, gtk_window] {
+    _view->popup_actions["Info"] = [this, gtk_window] {
         UserInfoDialog::show(gtk_window, *this);
     };
 
     auto& room = channel._room;
 
     if (name != channel._room.username()) {
-        _view.popup_actions["Authorize"] = [this, &room, name] {
+        _view->popup_actions["Authorize"] = [this, &room, name] {
             room.authorize(name);
         };
     }
+}
+
+inline void User::authorized_by(std::string name)
+{
+    _authorized_by.insert(name);
+    _view->update(*this);
+}
+
+inline void User::set_promoted(bool value) {
+    _was_promoted = value;
+    _view->update(*this);
+}
+
+inline bool User::was_promoted() const {
+    return _was_promoted;
 }
 
 } // np1sec_plugin namespace

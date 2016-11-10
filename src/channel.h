@@ -21,6 +21,7 @@
 #include <memory>
 #include <iostream>
 #include <boost/optional.hpp>
+#include <boost/range/adaptor/map.hpp>
 
 /* np1sec headers */
 #include "src/crypto.h"
@@ -50,6 +51,8 @@ public:
     void set_user_public_key(const std::string& username, const PublicKey&);
     void promote_user(const std::string& username);
     User* find_user(const std::string&);
+    bool everyone_promoted_everyone() const;
+    size_t size() const { return _users.size(); }
 
 public:
     /*
@@ -129,28 +132,53 @@ namespace np1sec_plugin {
 //------------------------------------------------------------------------------
 // Implementation
 //------------------------------------------------------------------------------
-Channel::Channel(np1sec::Channel* delegate, Room& room)
+inline Channel::Channel(np1sec::Channel* delegate, Room& room)
     : _delegate(delegate)
     , _room(room)
     , _view(_room.get_view(), std::to_string(size_t(_delegate)))
 {
+    for (const auto& user : _delegate->users()) {
+        add_member(user);
+        promote_user(user);
+    }
+
     _view.on_double_click = [this] {
         _room._room->join_channel(_delegate);
     };
 }
 
+inline
+bool Channel::everyone_promoted_everyone() const
+{
+    std::set<std::string> all_users;
+
+    for (const auto& u : _users | boost::adaptors::map_keys) {
+        all_users.insert(u);
+    }
+
+    for (const auto& u : _users | boost::adaptors::map_values) {
+        if (u->authorized_by() != all_users) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+inline
 void Channel::promote_user(const std::string& username)
 {
-    auto user_i = _users.find(username);
+    auto user = find_user(username);
 
-    if (user_i == _users.end()) {
+    if (!user) {
         assert(0 && "Authorized user is not in the channel");
         return;
     }
 
-    user_i->second->was_promoted = true;
+    user->set_promoted(true);
 }
 
+inline
 void Channel::set_user_public_key(const std::string& username, const PublicKey& public_key)
 {
     auto user_i = _users.find(username);
@@ -163,7 +191,8 @@ void Channel::set_user_public_key(const std::string& username, const PublicKey& 
     user_i->second->public_key = public_key;
 }
 
-void Channel::add_member( const std::string& username)
+inline
+void Channel::add_member(const std::string& username)
 {
     assert(_users.count(username) == 0);
 
@@ -171,10 +200,18 @@ void Channel::add_member( const std::string& username)
                    std::make_unique<User>(*this, username));
 }
 
+inline
 void Channel::user_joined(const std::string& username)
 {
     _room.inform("Channel::user_joined(", channel_id(), ", ", username, ")");
+
+    for (const auto& user : _users | boost::adaptors::map_values) {
+        user->set_promoted(false);
+    }
+
     add_member(username);
+
+    find_user(username)->set_promoted(false);
 }
 
 void Channel::user_left(const std::string& username)
@@ -210,7 +247,7 @@ void Channel::user_authorized_by(const std::string& user, const std::string& tar
         return;
     }
 
-    target_p->authorized_by.insert(user);
+    target_p->authorized_by(user);
 }
 
 void Channel::user_promoted(const std::string& username)
@@ -227,7 +264,6 @@ void Channel::joined()
 void Channel::authorized()
 {
     _room.inform("Channel::authorized(", channel_id(), ")");
-    promote_user(_room._username);
 }
 
 

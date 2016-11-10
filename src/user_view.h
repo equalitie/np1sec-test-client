@@ -26,7 +26,7 @@ class ChannelView;
 
 class UserView {
 public:
-    UserView(ChannelView&, const std::string& name);
+    UserView(ChannelView&, const User&);
     ~UserView();
 
     UserView(const UserView&) = delete;
@@ -37,36 +37,34 @@ public:
 
     PopupActions popup_actions;
 
+    void update(const User&);
+
 private:
     void expand(GtkTreeIter& iter);
 
 private:
     ChannelView& _channel_view;
     GtkTreeIter _iter;
-    bool _is_myself;
+    bool _was_promoted = false;
 };
 
 } // np1sec_plugin namespace
 
 #include "channel_view.h"
+#include "user.h"
 
 namespace np1sec_plugin {
 //------------------------------------------------------------------------------
 // Implementation
 //------------------------------------------------------------------------------
-UserView::UserView(ChannelView& channel, const std::string& name)
+UserView::UserView(ChannelView& channel, const User& user)
     : _channel_view(channel)
 {
     auto& rv = _channel_view._room_view;
     auto* tree_store = rv._tree_store;
 
-    _is_myself = rv._username == name;
-
     gtk_tree_store_append(tree_store, &_iter, &_channel_view._iter);
-    gtk_tree_store_set(tree_store, &_iter,
-                       0,
-                       (_is_myself ? "*" + name : name).c_str(),
-                       -1);
+    update(user);
 
     expand(_iter);
 
@@ -79,6 +77,22 @@ UserView::UserView(ChannelView& channel, const std::string& name)
 
 UserView::~UserView() {
     gtk_tree_store_remove(_channel_view._room_view._tree_store, &_iter);
+}
+
+inline void UserView::update(const User& user)
+{
+    auto new_name = (user.is_myself() ? "*" + user.name() : user.name());
+
+    //if (user.was_promoted()) {
+    //    new_name += " (p)";
+    //}
+    //else {
+        new_name += " " + util::str(user.authorized_by());
+    //}
+
+    gtk_tree_store_set(_channel_view._room_view._tree_store,
+                       &_iter,
+                       0, new_name.c_str(), -1);
 }
 
 inline
