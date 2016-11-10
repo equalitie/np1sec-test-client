@@ -14,6 +14,10 @@ find_package(Boost ${BOOST_VERSION} COMPONENTS REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK2 REQUIRED gtk+-2.0)
 
+link_directories(
+    ${NP1SEC_LIB_DIR}
+)
+
 include_directories(
   "${Boost_INCLUDE_DIR}"
   "${CMAKE_SOURCE_DIR}/src"
@@ -28,6 +32,6 @@ file(GLOB sources
 )
 
 add_library(np1sec-plugin SHARED ${sources})
-target_link_libraries(np1sec-plugin ${NP1SEC_LIB_DIR}/libnp1sec.so)
+target_link_libraries(np1sec-plugin libnp1sec.so)
 
 ################################################################################
