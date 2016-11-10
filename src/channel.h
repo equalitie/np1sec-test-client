@@ -43,8 +43,13 @@ public:
     Channel(Channel&&) = default;
     Channel& operator=(Channel&&) = default;
 
+    /*
+     * Internal
+     */
     void add_member(const std::string&);
     void set_user_public_key(const std::string& username, const PublicKey&);
+    void promote_user(const std::string& username);
+    User* find_user(const std::string&);
 
 public:
     /*
@@ -98,6 +103,9 @@ public:
     void dump() override;
 
 private:
+    /*
+     * Internal
+     */
     size_t channel_id() const { return size_t(_delegate); }
 
 private:
@@ -129,6 +137,18 @@ Channel::Channel(np1sec::Channel* delegate, Room& room)
     _view.on_double_click = [this] {
         _room._room->join_channel(_delegate);
     };
+}
+
+void Channel::promote_user(const std::string& username)
+{
+    auto user_i = _users.find(username);
+
+    if (user_i == _users.end()) {
+        assert(0 && "Authorized user is not in the channel");
+        return;
+    }
+
+    user_i->second->was_promoted = true;
 }
 
 void Channel::set_user_public_key(const std::string& username, const PublicKey& public_key)
@@ -181,12 +201,22 @@ void Channel::user_authentication_failed(const std::string& username)
 
 void Channel::user_authorized_by(const std::string& user, const std::string& target)
 {
-    _room.inform("Channel::user_authorized_id(", channel_id(), ", ", user, ")");
+    _room.inform("Channel::user_authorized_by(", channel_id(), ", ", target, " by ", user, ")");
+
+    auto target_p = find_user(target);
+
+    if (!target_p || !find_user(user)) {
+        assert(0 && "Either target or user is not in this channel");
+        return;
+    }
+
+    target_p->authorized_by.insert(user);
 }
 
 void Channel::user_promoted(const std::string& username)
 {
     _room.inform("Channel::user_promoted(", channel_id(), ", ", username, ")");
+    promote_user(username);
 }
 
 void Channel::joined()
@@ -197,6 +227,7 @@ void Channel::joined()
 void Channel::authorized()
 {
     _room.inform("Channel::authorized(", channel_id(), ")");
+    promote_user(_room._username);
 }
 
 
@@ -206,6 +237,12 @@ void Channel::authorized()
 void Channel::dump()
 {
     _room.inform("Channel::dump(", channel_id(), ")");
+}
+
+User* Channel::find_user(const std::string& user) {
+    auto user_i = _users.find(user);
+    if (user_i == _users.end()) return nullptr;
+    return user_i->second.get();
 }
 
 } // np1sec_plugin namespace

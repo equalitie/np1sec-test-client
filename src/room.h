@@ -37,6 +37,7 @@
 namespace np1sec_plugin {
 
 class Channel;
+class User;
 
 struct Room final : private np1sec::RoomInterface {
 #ifndef _NDEBUG
@@ -63,6 +64,8 @@ public:
     void user_left(const std::string&);
 
     GtkWindow* gtk_window() const;
+
+    void authorize(const std::string& name) { _room->authorize(name); }
 
 private:
     void display(const std::string& message);
@@ -121,7 +124,7 @@ Room::Room(PurpleConversation* conv)
     , _account(conv->account)
     , _username(sanitize_name(_account->username))
     , _private_key(np1sec::PrivateKey::generate())
-    , _room_view(conv)
+    , _room_view(conv, _username)
     , _toolbar(PIDGIN_CONVERSATION(conv))
 {
     _toolbar.on_create_channel_clicked = [this] {
@@ -191,7 +194,7 @@ bool Room::interpret_as_command(const std::string& cmd)
         }
         else if (c == "authorize") {
             auto user = parse<string>(p);
-            _room->authorize(user);
+            authorize(user);
         }
         else if (c == "create-channel") {
             _room->create_channel();
@@ -260,6 +263,7 @@ Room::new_channel(np1sec::Channel* channel)
 
     for (const auto user : users) {
         ch->add_member(user);
+        ch->promote_user(user);
     }
 
     return ch.get();

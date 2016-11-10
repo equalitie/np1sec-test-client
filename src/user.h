@@ -63,6 +63,14 @@ User::User(Channel& channel, const std::string& name)
     _view.popup_actions["Info"] = [this, gtk_window] {
         UserInfoDialog::show(gtk_window, *this);
     };
+
+    auto& room = channel._room;
+
+    if (name != channel._room.username()) {
+        _view.popup_actions["Authorize"] = [this, &room, name] {
+            room.authorize(name);
+        };
+    }
 }
 
 } // np1sec_plugin namespace

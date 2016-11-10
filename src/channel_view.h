@@ -57,7 +57,7 @@ private:
     std::string path() const;
 
 private:
-    RoomView& _room;
+    RoomView& _room_view;
     std::string _name;
     GtkTreeIter _iter;
 };
@@ -71,21 +71,21 @@ namespace np1sec_plugin {
 // Implementation
 //------------------------------------------------------------------------------
 inline ChannelView::ChannelView(RoomView& room, const std::string& name)
-    : _room(room)
+    : _room_view(room)
     , _name(name)
 {
-    gtk_tree_store_append(_room._tree_store, &_iter, NULL);
-    gtk_tree_store_set(_room._tree_store, &_iter,
+    gtk_tree_store_append(_room_view._tree_store, &_iter, NULL);
+    gtk_tree_store_set(_room_view._tree_store, &_iter,
                        COL_NAME, _name.c_str(),
                        -1);
 
     auto p = path();
 
-    _room._double_click_callbacks[p] = [this] {
+    _room_view._double_click_callbacks[p] = [this] {
         if (on_double_click) on_double_click();
     };
 
-    _room._show_popup_callbacks[p] = [this] (GdkEventButton* e) {
+    _room_view._show_popup_callbacks[p] = [this] (GdkEventButton* e) {
         show_popup(e, popup_actions);
     };
 }
@@ -93,13 +93,13 @@ inline ChannelView::ChannelView(RoomView& room, const std::string& name)
 inline
 std::string ChannelView::path() const
 {
-    return util::tree_iter_to_path(_iter, _room._tree_store);
+    return util::tree_iter_to_path(_iter, _room_view._tree_store);
 }
 
 inline ChannelView::~ChannelView()
 {
-    _room._double_click_callbacks.erase(path());
-    gtk_tree_store_remove(_room._tree_store, &_iter);
+    _room_view._double_click_callbacks.erase(path());
+    gtk_tree_store_remove(_room_view._tree_store, &_iter);
 }
 
 } // np1sec_plugin namespace

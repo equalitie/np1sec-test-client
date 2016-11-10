@@ -41,8 +41,9 @@ private:
     void expand(GtkTreeIter& iter);
 
 private:
-    ChannelView& _channel;
+    ChannelView& _channel_view;
     GtkTreeIter _iter;
+    bool _is_myself;
 };
 
 } // np1sec_plugin namespace
@@ -54,33 +55,38 @@ namespace np1sec_plugin {
 // Implementation
 //------------------------------------------------------------------------------
 UserView::UserView(ChannelView& channel, const std::string& name)
-    : _channel(channel)
+    : _channel_view(channel)
 {
-    auto& room = _channel._room;
-    auto* tree_store = room._tree_store;
+    auto& rv = _channel_view._room_view;
+    auto* tree_store = rv._tree_store;
 
-    gtk_tree_store_append(tree_store, &_iter, &_channel._iter);
+    _is_myself = rv._username == name;
+
+    gtk_tree_store_append(tree_store, &_iter, &_channel_view._iter);
     gtk_tree_store_set(tree_store, &_iter,
-                       0, name.c_str(),
+                       0,
+                       (_is_myself ? "*" + name : name).c_str(),
                        -1);
 
     expand(_iter);
 
-    auto path = util::tree_iter_to_path(_iter, _channel._room._tree_store);
+    auto path = util::tree_iter_to_path(_iter, rv._tree_store);
 
-    _channel._room._show_popup_callbacks[path] = [this] (GdkEventButton* e) {
+    rv._show_popup_callbacks[path] = [this] (GdkEventButton* e) {
         show_popup(e, popup_actions);
     };
 }
 
 UserView::~UserView() {
-    gtk_tree_store_remove(_channel._room._tree_store, &_iter);
+    gtk_tree_store_remove(_channel_view._room_view._tree_store, &_iter);
 }
 
 inline
 void UserView::expand(GtkTreeIter& iter) {
-    auto tree_store = _channel._room._tree_store;
-    auto tree_view = _channel._room._tree_view;
+    auto& rv = _channel_view._room_view;
+
+    auto tree_store = rv._tree_store;
+    auto tree_view  = rv._tree_view;
 
     auto model = GTK_TREE_MODEL(tree_store);
 

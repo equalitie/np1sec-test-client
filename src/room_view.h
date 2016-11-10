@@ -26,7 +26,7 @@ class ChannelView;
 
 class RoomView {
 public:
-    RoomView(PurpleConversation*);
+    RoomView(PurpleConversation*, const std::string& username);
 
     RoomView(RoomView&&) = delete;
     RoomView(const RoomView&) = delete;
@@ -51,6 +51,8 @@ private:
 private:
     friend class ChannelView;
     friend class UserView;
+
+    const std::string _username;
 
     GtkTreeView* _tree_view;
     GtkTreeStore* _tree_store;
@@ -78,7 +80,8 @@ namespace np1sec_plugin {
 //------------------------------------------------------------------------------
 // Implementation
 //------------------------------------------------------------------------------
-inline RoomView::RoomView(PurpleConversation* conv)
+inline RoomView::RoomView(PurpleConversation* conv, const std::string& username)
+    : _username(username)
 {
     // TODO: Throw instead of assert.
 
