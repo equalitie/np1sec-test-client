@@ -325,10 +325,10 @@ void Room::display(const std::string& sender, const std::string& message)
     assert(_conv && _conv->ui_ops && _conv->ui_ops->write_conv);
     _conv->ui_ops->write_conv(_conv,
                               sender.c_str(),
-                              NULL,
+                              sender.c_str(),
                               message.c_str(),
                               PURPLE_MESSAGE_RECV,
-                              0);
+                              time(NULL));
 }
 
 inline
