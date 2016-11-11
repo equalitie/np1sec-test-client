@@ -246,7 +246,7 @@ static PurplePluginInfo info =
     PURPLE_PRIORITY_DEFAULT,                          /* priority       */
     _("gtk-equalitie-np1sec"),                        /* id             */
     _("(n+1)sec"),                                    /* name           */
-    _("0.2"),                                         /* version        */
+    _("0.3"),                                         /* version        */
     NULL,                                             /* summary        */
     NULL,                                             /* description    */
 
