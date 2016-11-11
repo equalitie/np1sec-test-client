@@ -39,6 +39,7 @@ public:
     const std::set<std::string>& authorized_by() const { return _authorized_by; }
 
     void authorized_by(std::string name);
+    void un_authorized_by(std::string name);
     void set_promoted(bool);
     bool was_promoted() const;
     bool is_myself() const { return _is_myself; }
@@ -86,6 +87,12 @@ User::User(Channel& channel, const std::string& name)
 inline void User::authorized_by(std::string name)
 {
     _authorized_by.insert(name);
+    _view->update(*this);
+}
+
+inline void User::un_authorized_by(std::string name)
+{
+    _authorized_by.erase(name);
     _view->update(*this);
 }
 

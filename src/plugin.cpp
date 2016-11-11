@@ -39,7 +39,7 @@
 #include "gtkconv.h"
 
 /* Plugin headers */
-#include "room.h"
+#include "plugin_toggle_button.h"
 
 /*
  * Rant: The only reason for this global is because the sending-chat-msg
@@ -48,58 +48,54 @@
  */
 static std::map<int, PurpleConversation*> g_conversations;
 
+using ToggleButton = np1sec_plugin::PluginToggleButton;
+
 extern "C" {
 
 #define _(x) const_cast<char*>(x)
 
 //------------------------------------------------------------------------------
-static np1sec_plugin::Room* get_conv_room(PurpleConversation* conv)
+static ToggleButton* get_toggle_button(PurpleConversation* conv)
 {
-    auto* p =  g_hash_table_lookup(conv->data, "np1sec_plugin_room");
-    return static_cast<np1sec_plugin::Room*>(p);
+    auto* p =  g_hash_table_lookup(conv->data, "np1sec_plugin");
+    return static_cast<ToggleButton*>(p);
 }
 
-static void set_conv_room(PurpleConversation* conv, np1sec_plugin::Room* room)
+static void set_toggle_button(PurpleConversation* conv, ToggleButton* tb)
 {
-    if (auto r = get_conv_room(conv)) {
+    if (auto r = get_toggle_button(conv)) {
         delete r;
     }
-    g_hash_table_insert(conv->data, strdup("np1sec_plugin_room"), room);
+    g_hash_table_insert(conv->data, strdup("np1sec_plugin"), tb);
 }
 
 //------------------------------------------------------------------------------
 static void conversation_created_cb(PurpleConversation *conv)
 {
-    auto* room = new np1sec_plugin::Room(conv);
-    set_conv_room(conv, room);
-
-    // NOTE: We can't call room->start() here because the
-    // purple_conv_chat_get_id(PURPLE_CONV_CHAT(conv)) doesn't return
-    // a valid ID yet and thus sending wouldn't work.
+    auto* tb = new ToggleButton(conv);
+    set_toggle_button(conv, tb);
 }
 
 void conversation_updated_cb(PurpleConversation *conv, 
                              PurpleConvUpdateType type) {
-    auto* room = get_conv_room(conv);
+    auto* tb = get_toggle_button(conv);
 
-    if (!room) {
+    if (!tb) {
         // The conversation-created signal has not yet been called.
         return;
     }
 
-    if (!room->started()) {
-        auto id = purple_conv_chat_get_id(PURPLE_CONV_CHAT(conv));
-        assert(g_conversations.count(id) == 0);
+    auto id = purple_conv_chat_get_id(PURPLE_CONV_CHAT(conv));
+
+    if (g_conversations.count(id) == 0) {
         g_conversations[id] = conv;
-        room->start();
     }
 }
 
 static void deleting_conversation_cb(PurpleConversation *conv) {
     auto id = purple_conv_chat_get_id(PURPLE_CONV_CHAT(conv));
     g_conversations.erase(id);
-    auto room = get_conv_room(conv);
-    delete room;
+    set_toggle_button(conv, nullptr);
 }
 
 static gboolean receiving_chat_msg_cb(PurpleAccount *account,
@@ -108,14 +104,16 @@ static gboolean receiving_chat_msg_cb(PurpleAccount *account,
                                       PurpleConversation* conv,
                                       PurpleMessageFlags *flags)
 {
-    auto room = get_conv_room(conv);
-    assert(room);
-    if (!room) return FALSE;
+    auto tb = get_toggle_button(conv);
+    assert(tb);
+    if (!tb) return FALSE;
+
+    if (!tb->room) return FALSE;
 
     // Ignore historic messages.
     if (*flags & PURPLE_MESSAGE_DELAYED) return TRUE;
 
-    room->on_received_data(*sender, *message);
+    tb->room->on_received_data(*sender, *message);
 
     // Returning TRUE causes this message not to be displayed.
     // Displaying is done explicitly from np1sec.
@@ -127,10 +125,12 @@ void sending_chat_msg_cb(PurpleAccount *account, char **message, int id) {
     auto conv_i = g_conversations.find(id);
     assert(conv_i != g_conversations.end());
 
-    auto room = get_conv_room(conv_i->second);
-    assert(room);
+    auto tb = get_toggle_button(conv_i->second);
+    assert(tb);
 
-    room->send_chat_message(*message);
+    if (!tb->room) return;
+
+    tb->room->send_chat_message(*message);
 
     g_free(*message);
     *message = NULL;
@@ -139,10 +139,9 @@ void sending_chat_msg_cb(PurpleAccount *account, char **message, int id) {
 static
 void chat_buddy_left_cb(PurpleConversation* conv, const char* name, const char*, void*)
 {
-    auto room = get_conv_room(conv);
-    assert(room);
-    if (!room) return;
-    room->user_left(name);
+    auto tb = get_toggle_button(conv);
+    assert(tb);
+    if (tb && tb->room) tb->room->user_left(name);
 }
 
 //------------------------------------------------------------------------------
@@ -191,10 +190,9 @@ gboolean np1sec_plugin_load(PurplePlugin* plugin)
 
 		PurpleConversation *conv = (PurpleConversation *)convs->data;
 
-        if (!get_conv_room(conv)) {
-            auto* room = new np1sec_plugin::Room(conv);
-            set_conv_room(conv, room);
-            room->start();
+        if (!get_toggle_button(conv)) {
+            auto* tb = new ToggleButton(conv);
+            set_toggle_button(conv, tb);
 
             auto id = purple_conv_chat_get_id(PURPLE_CONV_CHAT(conv));
             assert (g_conversations.count(id) == 0);
@@ -221,7 +219,7 @@ gboolean np1sec_plugin_unload(PurplePlugin* plugin)
 
 		PurpleConversation *conv = (PurpleConversation *)convs->data;
 
-        set_conv_room(conv, nullptr);
+        set_toggle_button(conv, nullptr);
 
 		convs = convs->next;
 	}

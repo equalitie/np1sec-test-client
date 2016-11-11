@@ -222,6 +222,11 @@ void Channel::user_left(const std::string& username)
     if (_users.empty()) {
         // Self destruct.
         _room._channels.erase(_delegate);
+        return;
+    }
+
+    for (auto& user : _users | boost::adaptors::map_values) {
+        user->un_authorized_by(username);
     }
 }
 
