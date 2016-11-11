@@ -44,12 +44,16 @@ public:
     bool was_promoted() const;
     bool is_myself() const { return _is_myself; }
 
+    bool in_chat() const { return _in_chat; }
+    void in_chat(bool v) { _in_chat = v; }
+
 private:
     std::string _name;
     bool _is_myself;
     bool _was_promoted = false;
     std::set<std::string> _authorized_by;
     std::unique_ptr<UserView> _view;
+    bool _in_chat = false;
 };
 
 } // np1sec_plugin namespace

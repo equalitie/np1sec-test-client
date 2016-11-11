@@ -53,57 +53,58 @@ public:
     User* find_user(const std::string&);
     bool everyone_promoted_everyone() const;
     size_t size() const { return _users.size(); }
+    const std::string& my_username() const { return _room.username(); }
 
 public:
     /*
      * A user joined this channel. No cryptographic identity is known yet.
      */
     void user_joined(const std::string& username) override;
-    
+
     /*
      * A user left the channel.
      */
     void user_left(const std::string& username) override;
-    
+
     /*
      * The cryptographic identity of a user was confirmed.
      */
     void user_authenticated(const std::string& username, const PublicKey& public_key) override;
-    
+
     /*
      * A user failed to authenticate. This indicates an attack!
      */
     void user_authentication_failed(const std::string& username) override;
-    
+
     /*
      * A user <authenticatee> was accepted into the channel by a user <authenticator>.
      */
     void user_authorized_by(const std::string& user, const std::string& target) override;
-    
+
     /*
      * A user got authorized by all participants and is now a full participant.
      */
     void user_promoted(const std::string& username) override;
-    
-    
+
+
     /*
      * You joined this channel.
      */
     void joined() override;
-    
+
     /*
      * You got authorized by all participants and are now a full participant.
      */
     void authorized() override;
-    
-    
+
+
     /*
      * Not implemented yet.
      */
-    // virtual void message_received(const std::string& username, const std::string& message) = 0;
-    
-    // DEBUG
-    void dump() override;
+    void message_received(const std::string& username, const std::string& message) override;
+
+    void user_joined_chat(const std::string& username) override;
+    void joined_chat() override;
 
 private:
     /*
@@ -272,12 +273,25 @@ void Channel::authorized()
 }
 
 
-// virtual void message_received(const std::string& username, const std::string& message) = 0;
-
-// DEBUG
-void Channel::dump()
+void Channel::message_received(const std::string& username, const std::string& message)
 {
-    _room.inform("Channel::dump(", channel_id(), ")");
+    _room.display(username, message);
+}
+
+void Channel::user_joined_chat(const std::string& username)
+{
+    _room.inform("Channel::user_joined_chat(", username, ")");
+    if (auto u = find_user(username)) {
+        u->in_chat(true);
+    }
+}
+
+void Channel::joined_chat()
+{
+    _room.inform("Channel::joined_chat()");
+    auto u = find_user(my_username());
+    assert(u);
+    if (u) u->in_chat(true);
 }
 
 User* Channel::find_user(const std::string& user) {

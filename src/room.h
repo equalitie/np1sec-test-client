@@ -88,7 +88,7 @@ private:
     static std::string sanitize_name(std::string name);
 
     bool interpret_as_command(const std::string&);
-    Channel* current_channel();
+    User* find_user_in_channel(const std::string& username);
 
 private:
     friend class Channel;
@@ -146,11 +146,11 @@ void Room::start()
 }
 
 inline
-Channel* Room::current_channel()
+User* Room::find_user_in_channel(const std::string& username)
 {
     for (const auto& c : _channels | boost::adaptors::map_values) {
-        if (c->find_user(_username)) {
-            return c.get();
+        if (auto u = c->find_user(_username)) {
+            return u;
         }
     }
     return nullptr;
@@ -163,20 +163,10 @@ void Room::send_chat_message(const std::string& message)
         return;
     }
 
-    auto* ch = current_channel();
+    auto* u = find_user_in_channel(_username);
 
-    if (!ch) {
-        return inform("Not in a channel");
-    }
-
-    if (!ch->everyone_promoted_everyone()) {
-        // TODO: Current np1sec limitation (the lib crashes)
-        return inform("Not everyone authorized everyone");
-    }
-
-    if (ch->size() <= 1) {
-        // TODO: Current np1sec limitation (the lib crashes)
-        return inform("No one to send to");
+    if (!u->in_chat()) {
+        return inform("Not in chat");
     }
 
     _room->send_chat(message);
