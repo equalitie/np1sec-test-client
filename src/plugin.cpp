@@ -50,6 +50,10 @@ static std::map<int, PurpleConversation*> g_conversations;
 
 using ToggleButton = np1sec_plugin::PluginToggleButton;
 
+static bool is_chat(PurpleConversation* conv) {
+    return conv && conv->type == PURPLE_CONV_TYPE_CHAT;
+}
+
 extern "C" {
 
 #define _(x) const_cast<char*>(x)
@@ -72,12 +76,16 @@ static void set_toggle_button(PurpleConversation* conv, ToggleButton* tb)
 //------------------------------------------------------------------------------
 static void conversation_created_cb(PurpleConversation *conv)
 {
+    if (!is_chat(conv)) return;
+
     auto* tb = new ToggleButton(conv);
     set_toggle_button(conv, tb);
 }
 
-void conversation_updated_cb(PurpleConversation *conv, 
-                             PurpleConvUpdateType type) {
+static void conversation_updated_cb(PurpleConversation *conv,
+                                    PurpleConvUpdateType type) {
+    if (!is_chat(conv)) return;
+
     auto* tb = get_toggle_button(conv);
 
     if (!tb) {
@@ -93,6 +101,8 @@ void conversation_updated_cb(PurpleConversation *conv,
 }
 
 static void deleting_conversation_cb(PurpleConversation *conv) {
+    if (!is_chat(conv)) return;
+
     auto id = purple_conv_chat_get_id(PURPLE_CONV_CHAT(conv));
     g_conversations.erase(id);
     set_toggle_button(conv, nullptr);
@@ -104,6 +114,8 @@ static gboolean receiving_chat_msg_cb(PurpleAccount *account,
                                       PurpleConversation* conv,
                                       PurpleMessageFlags *flags)
 {
+    if (!is_chat(conv)) return FALSE;
+
     auto tb = get_toggle_button(conv);
     assert(tb);
     if (!tb) return FALSE;
@@ -139,6 +151,8 @@ void sending_chat_msg_cb(PurpleAccount *account, char **message, int id) {
 static
 void chat_buddy_left_cb(PurpleConversation* conv, const char* name, const char*, void*)
 {
+    if (!is_chat(conv)) return;
+
     auto tb = get_toggle_button(conv);
     assert(tb);
     if (tb && tb->room) tb->room->user_left(name);
@@ -190,7 +204,7 @@ gboolean np1sec_plugin_load(PurplePlugin* plugin)
 
 		PurpleConversation *conv = (PurpleConversation *)convs->data;
 
-        if (!get_toggle_button(conv)) {
+        if (is_chat(conv) && !get_toggle_button(conv)) {
             auto* tb = new ToggleButton(conv);
             set_toggle_button(conv, tb);
 
@@ -218,6 +232,8 @@ gboolean np1sec_plugin_unload(PurplePlugin* plugin)
 	while (convs) {
 
 		PurpleConversation *conv = (PurpleConversation *)convs->data;
+
+        if (!is_chat(conv)) continue;
 
         set_toggle_button(conv, nullptr);
 
