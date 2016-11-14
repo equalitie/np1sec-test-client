@@ -67,16 +67,21 @@ void UserInfoDialog::show(GtkWindow* window, const User& user)
 inline
 GtkWidget* UserInfoDialog::create_content(const User& user)
 {
-    auto vbox = gtk_vbox_new(FALSE, 4);
+    auto vbox = gtk_vbox_new(FALSE, 0);
 
     auto append = [&] (const std::string& what, const std::string& value) {
-        auto hbox = gtk_hbox_new(FALSE, 4);
+        auto hbox = gtk_hbox_new(FALSE, 0);
 
-        auto label = gtk_label_new((what + value).c_str());
+        auto label = gtk_label_new(what.c_str());
 
-        gtk_box_pack_start(GTK_BOX(hbox), label, TRUE, TRUE, 4);
+        auto entry = gtk_entry_new();
+        gtk_entry_set_text(GTK_ENTRY(entry), value.c_str());
+        gtk_entry_set_editable(GTK_ENTRY(entry), false);
 
-        gtk_box_pack_start(GTK_BOX(vbox), hbox, TRUE, TRUE, 4);
+        gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 4);
+        gtk_box_pack_start(GTK_BOX(hbox), entry, TRUE, TRUE, 4);
+
+        gtk_box_pack_start(GTK_BOX(vbox), hbox, TRUE, TRUE, 0);
     };
 
     append("Name: ", user.name());
