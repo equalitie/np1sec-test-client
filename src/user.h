@@ -32,6 +32,12 @@ class User {
 public:
     User(Channel& channel, const std::string& name);
 
+    User(const User&) = delete;
+    User& operator=(const User&) = delete;
+
+    User(User&&) = delete;
+    User& operator=(User&&) = delete;
+
     const std::string& name() const { return _name; }
 
 public:
@@ -40,13 +46,17 @@ public:
 
     void authorized_by(std::string name);
     void un_authorized_by(std::string name);
+    bool is_authorized() const;
     void set_promoted(bool);
     bool was_promoted() const;
     bool was_promoted_by_me() const;
     bool is_myself() const { return _is_myself; }
 
-    bool in_chat() const { return _in_chat; }
-    void in_chat(bool v) { _in_chat = v; }
+    bool in_chat() const;
+
+    void update_view() const;
+
+    const Channel& channel() const { return _channel; }
 
 private:
     std::string _name;
@@ -55,7 +65,6 @@ private:
     bool _was_promoted = false;
     std::set<std::string> _authorized_by;
     std::unique_ptr<UserView> _view;
-    bool _in_chat = false;
 };
 
 } // np1sec_plugin namespace
@@ -89,6 +98,21 @@ User::User(Channel& channel, const std::string& name)
             room.authorize(name);
         };
     }
+}
+
+inline bool User::is_authorized() const
+{
+    return _channel._delegate->user_is_authorized(_name);
+}
+
+inline void User::update_view() const
+{
+    _view->update(*this);
+}
+
+inline bool User::in_chat() const
+{
+    return _channel._delegate->user_in_chat(_name);
 }
 
 inline void User::authorized_by(std::string name)

@@ -47,13 +47,14 @@ public:
     /*
      * Internal
      */
-    void add_member(const std::string&);
+    User& add_member(const std::string&);
     void set_user_public_key(const std::string& username, const PublicKey&);
     void promote_user(const std::string& username);
     User* find_user(const std::string&);
     bool everyone_promoted_everyone() const;
     size_t size() const { return _users.size(); }
     const std::string& my_username() const { return _room.username(); }
+    bool user_in_chat(const std::string&) const;
 
 public:
     /*
@@ -139,8 +140,9 @@ inline Channel::Channel(np1sec::Channel* delegate, Room& room)
     , _view(_room.get_view(), std::to_string(size_t(_delegate)))
 {
     for (const auto& user : _delegate->users()) {
-        add_member(user);
+        auto& u = add_member(user);
         promote_user(user);
+        u.update_view();
     }
 
     _view.on_double_click = [this] {
@@ -154,6 +156,11 @@ inline Channel::Channel(np1sec::Channel* delegate, Room& room)
         }
         _room.join_channel(_delegate);
     };
+}
+
+inline bool Channel::user_in_chat(const std::string& name) const
+{
+    return _delegate->user_in_chat(name);
 }
 
 inline
@@ -200,13 +207,14 @@ void Channel::set_user_public_key(const std::string& username, const PublicKey& 
     user_i->second->public_key = public_key;
 }
 
-inline
-void Channel::add_member(const std::string& username)
+inline User& Channel::add_member(const std::string& username)
 {
     assert(_users.count(username) == 0);
 
-    _users.emplace(username,
-                   std::make_unique<User>(*this, username));
+    auto i = _users.emplace(username,
+                            std::make_unique<User>(*this, username));
+
+    return *(i.first->second.get());
 }
 
 inline
@@ -218,9 +226,9 @@ void Channel::user_joined(const std::string& username)
         user->set_promoted(false);
     }
 
-    add_member(username);
+    auto& u = add_member(username);
 
-    find_user(username)->set_promoted(false);
+    u.set_promoted(false);
 }
 
 void Channel::user_left(const std::string& username)
@@ -290,16 +298,21 @@ void Channel::user_joined_chat(const std::string& username)
 {
     _room.inform("Channel::user_joined_chat(", username, ")");
     if (auto u = find_user(username)) {
-        u->in_chat(true);
+        u->update_view();
     }
 }
 
 void Channel::joined_chat()
 {
     _room.inform("Channel::joined_chat()");
-    auto u = find_user(my_username());
-    assert(u);
-    if (u) u->in_chat(true);
+    /**
+     * There are properties of other users that this user couldn't have
+     * seen previously (e.g. whether they are in the chat), so we need to
+     * update everyone's view.
+     */
+    for (auto& u : _users | boost::adaptors::map_values) {
+        u->update_view();
+    }
 }
 
 User* Channel::find_user(const std::string& user) {

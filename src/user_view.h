@@ -82,15 +82,30 @@ UserView::~UserView() {
 
 inline void UserView::update(const User& user)
 {
-    auto new_name = (!user.is_myself() && !user.was_promoted_by_me())
-                ? "*" + user.name()
-                : user.name();
+    auto name = user.name();
 
-    //new_name += " " + util::str(user.authorized_by());
+    if (!user.is_myself()) {
+        auto myname = user.channel().my_username();
+
+        if (!user.was_promoted_by_me()) {
+            if (user.channel().user_in_chat(myname)) {
+                name = "*" + name;
+            }
+            else {
+                if (user.is_authorized()) {
+                    name = "*" + name;
+                }
+            }
+        }
+    }
+
+    if (user.in_chat()) {
+        name += " (chatting)";
+    }
 
     gtk_tree_store_set(_channel_view._room_view._tree_store,
                        &_iter,
-                       0, new_name.c_str(), -1);
+                       0, name.c_str(), -1);
 }
 
 inline
