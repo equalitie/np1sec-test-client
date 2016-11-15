@@ -289,8 +289,8 @@ Room::new_channel(np1sec::Channel* channel)
 {
     _toolbar.reset();
 
-    inform("Room::new_channel(</b>", size_t(channel),
-           "<b>) with participants: ", encode_range(channel->users()));
+    inform("Room::new_channel(", size_t(channel),
+           ") with participants: ", encode_range(channel->users()));
 
     if (_channels.count(channel) != 0) {
         assert(0 && "Channel already present");
@@ -337,7 +337,7 @@ template<class... Args>
 inline
 void Room::inform(Args&&... args)
 {
-    display(_username, "<b>" + util::str(std::forward<Args>(args)...) + "<b>");
+    display(_username, "<font color=\"#9A9A9A\">" + util::str(std::forward<Args>(args)...) + "</font>");
 }
 
 inline
