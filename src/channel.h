@@ -144,6 +144,14 @@ inline Channel::Channel(np1sec::Channel* delegate, Room& room)
     }
 
     _view.on_double_click = [this] {
+        /**
+         * Switching channels currently causes assertion in the np1sec
+         * library.
+         */
+        if (_room.find_user_in_channel(_room.username())) {
+            _room.inform("Already in a channel");
+            return;
+        }
         _room.join_channel(_delegate);
     };
 }
