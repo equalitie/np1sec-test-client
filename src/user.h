@@ -42,6 +42,7 @@ public:
     void un_authorized_by(std::string name);
     void set_promoted(bool);
     bool was_promoted() const;
+    bool was_promoted_by_me() const;
     bool is_myself() const { return _is_myself; }
 
     bool in_chat() const { return _in_chat; }
@@ -49,6 +50,7 @@ public:
 
 private:
     std::string _name;
+    Channel& _channel;
     bool _is_myself;
     bool _was_promoted = false;
     std::set<std::string> _authorized_by;
@@ -69,6 +71,7 @@ namespace np1sec_plugin {
 inline
 User::User(Channel& channel, const std::string& name)
     : _name(name)
+    , _channel(channel)
     , _is_myself(name == channel._room.username())
     , _authorized_by({name})
     , _view(new UserView(channel._view, *this))
@@ -107,6 +110,10 @@ inline void User::set_promoted(bool value) {
 
 inline bool User::was_promoted() const {
     return _was_promoted;
+}
+
+inline bool User::was_promoted_by_me() const {
+    return _authorized_by.count(_channel._room.username());
 }
 
 } // np1sec_plugin namespace

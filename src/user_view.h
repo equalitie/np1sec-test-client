@@ -45,7 +45,6 @@ private:
 private:
     ChannelView& _channel_view;
     GtkTreeIter _iter;
-    bool _was_promoted = false;
 };
 
 } // np1sec_plugin namespace
@@ -57,6 +56,7 @@ namespace np1sec_plugin {
 //------------------------------------------------------------------------------
 // Implementation
 //------------------------------------------------------------------------------
+inline
 UserView::UserView(ChannelView& channel, const User& user)
     : _channel_view(channel)
 {
@@ -75,20 +75,18 @@ UserView::UserView(ChannelView& channel, const User& user)
     };
 }
 
+inline
 UserView::~UserView() {
     gtk_tree_store_remove(_channel_view._room_view._tree_store, &_iter);
 }
 
 inline void UserView::update(const User& user)
 {
-    auto new_name = (user.is_myself() ? "*" + user.name() : user.name());
+    auto new_name = (!user.is_myself() && !user.was_promoted_by_me())
+                ? "*" + user.name()
+                : user.name();
 
-    //if (user.was_promoted()) {
-    //    new_name += " (p)";
-    //}
-    //else {
-        new_name += " " + util::str(user.authorized_by());
-    //}
+    //new_name += " " + util::str(user.authorized_by());
 
     gtk_tree_store_set(_channel_view._room_view._tree_store,
                        &_iter,
