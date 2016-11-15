@@ -22,24 +22,64 @@ namespace np1sec_plugin {
 
 class Toolbar {
 public:
+    struct Button {
+    public:
+        void on_click(std::function<void()>);
+
+    private:
+        friend class Toolbar;
+
+        Button(GtkBox*, const char* label);
+
+        GtkWidget* _button_widget;
+        std::function<void()> _on_click;
+
+        static void on_clicked(GtkWidget*, Button* self);
+    };
+public:
     Toolbar(PidginConversation*);
 
-    std::function<void()> on_create_channel_clicked;
-    std::function<void()> on_search_channel_clicked;
+    std::unique_ptr<Button> create_channel_button;
+    std::unique_ptr<Button> search_channel_button;
 
     ~Toolbar();
 
 private:
-    static void exec_callback(GtkWidget*, gpointer data);
-
-private:
     PidginConversation* _gtkconv;
     GtkWidget* _toolbar_box;
+    GtkWidget* _create_channel_button;
+    GtkWidget* _search_channel_button;
 };
 
 //------------------------------------------------------------------------------
 // Implementation
 //------------------------------------------------------------------------------
+inline Toolbar::Button::Button(GtkBox* box, const char* label)
+{
+    _button_widget = gtk_button_new_with_label(label);
+    gtk_box_pack_start(GTK_BOX(box), _button_widget, FALSE, FALSE, 0);
+    gtk_widget_show(_button_widget);
+    gtk_widget_set_sensitive(_button_widget, false);
+
+    gtk_signal_connect(GTK_OBJECT(_button_widget), "clicked"
+            , GTK_SIGNAL_FUNC(on_clicked), this);
+}
+
+inline void Toolbar::Button::on_click(std::function<void()> f)
+{
+    gtk_widget_set_sensitive(_button_widget, bool(f));
+    _on_click = std::move(f);
+}
+
+inline void Toolbar::Button::on_clicked(GtkWidget*, Button* self)
+{
+    if (!self->_on_click) return;
+    /* _on_click may be replaced during its execution so need to
+     * create a copy */
+    auto func = self->_on_click;
+    func();
+}
+
 inline Toolbar::Toolbar(PidginConversation* gtkconv)
     : _gtkconv(gtkconv)
 {
@@ -53,27 +93,8 @@ inline Toolbar::Toolbar(PidginConversation* gtkconv)
     gtk_box_pack_start(GTK_BOX(_gtkconv->lower_hbox), _toolbar_box, FALSE, FALSE, 0);
     gtk_widget_show(_toolbar_box);
 
-    GtkWidget* create_channel_button = gtk_button_new_with_label("Create channel");
-    GtkWidget* search_channel_button = gtk_button_new_with_label("Search channels");
-
-    gtk_box_pack_start(GTK_BOX(_toolbar_box), create_channel_button, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(_toolbar_box), search_channel_button, FALSE, FALSE, 0);
-
-    gtk_widget_show(create_channel_button);
-    gtk_widget_show(search_channel_button);
-
-    gtk_signal_connect(GTK_OBJECT(create_channel_button), "clicked"
-            , GTK_SIGNAL_FUNC(exec_callback), &on_create_channel_clicked);
-
-    gtk_signal_connect(GTK_OBJECT(search_channel_button), "clicked"
-            , GTK_SIGNAL_FUNC(exec_callback), &on_search_channel_clicked);
-}
-
-void Toolbar::exec_callback(GtkWidget*, gpointer data)
-{
-    auto& func = *reinterpret_cast<std::function<void()>*>(data);
-    if (!func) return;
-    func();
+    create_channel_button.reset(new Button(GTK_BOX(_toolbar_box), "Create channel"));
+    search_channel_button.reset(new Button(GTK_BOX(_toolbar_box), "Search channels"));
 }
 
 inline Toolbar::~Toolbar()

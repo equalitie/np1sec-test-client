@@ -67,6 +67,8 @@ public:
 
     void authorize(const std::string& name) { _room->authorize(name); }
 
+    void join_channel(np1sec::Channel*);
+
 private:
     void display(const std::string& message);
     void display(const std::string& sender, const std::string& message);
@@ -104,7 +106,7 @@ private:
     RoomView _room_view;
     ChannelMap _channels;
 
-    Toolbar _toolbar;
+    std::unique_ptr<Toolbar> _toolbar;
 
     std::unique_ptr<Np1SecRoom> _room;
 };
@@ -126,15 +128,15 @@ Room::Room(PurpleConversation* conv)
     , _username(sanitize_name(_account->username))
     , _private_key(np1sec::PrivateKey::generate())
     , _room_view(conv, _username)
-    , _toolbar(PIDGIN_CONVERSATION(conv))
+    , _toolbar(new Toolbar(PIDGIN_CONVERSATION(conv)))
 {
-    _toolbar.on_create_channel_clicked = [this] {
+    _toolbar->create_channel_button->on_click([this] {
         _room->create_channel();
-    };
+    });
 
-    _toolbar.on_search_channel_clicked = [this] {
+    _toolbar->search_channel_button->on_click([this] {
         _room->search_channels();
-    };
+    });
 }
 
 inline
@@ -165,7 +167,7 @@ void Room::send_chat_message(const std::string& message)
 
     auto* u = find_user_in_channel(_username);
 
-    if (!u->in_chat()) {
+    if (!u || !u->in_chat()) {
         return inform("Not in chat");
     }
 
@@ -231,7 +233,7 @@ bool Room::interpret_as_command(const std::string& cmd)
                 return true;
             }
             inform("joining channel ", channel, " ", channel_id_str);
-            _room->join_channel(channel);
+            join_channel(channel);
         }
         else  {
             inform("\"", p.text, "\" is not a valid np1sec command");
@@ -243,6 +245,26 @@ bool Room::interpret_as_command(const std::string& cmd)
     }
 
     return true;
+}
+
+inline
+void Room::join_channel(np1sec::Channel* channel)
+{
+    auto ch_i = _channels.find(channel);
+
+    if (ch_i == _channels.end()) {
+        assert(0 && "Trying to join a non existent channel");
+        return;
+    }
+
+    auto& ch = *ch_i->second;
+
+    if (ch.find_user(_username)) {
+        inform("Already in that channel");
+        return;
+    }
+
+    _room->join_channel(channel);
 }
 
 inline
@@ -265,6 +287,8 @@ inline
 np1sec::ChannelInterface*
 Room::new_channel(np1sec::Channel* channel)
 {
+    _toolbar.reset();
+
     inform("Room::new_channel(</b>", size_t(channel),
            "<b>) with participants: ", encode_range(channel->users()));
 

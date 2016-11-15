@@ -144,7 +144,7 @@ inline Channel::Channel(np1sec::Channel* delegate, Room& room)
     }
 
     _view.on_double_click = [this] {
-        _room._room->join_channel(_delegate);
+        _room.join_channel(_delegate);
     };
 }
 
