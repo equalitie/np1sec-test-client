@@ -26,7 +26,6 @@
 namespace np1sec_plugin {
 
 class Channel;
-class UserView;
 
 class User {
 public:
@@ -64,13 +63,12 @@ private:
     bool _is_myself;
     bool _was_promoted = false;
     std::set<std::string> _authorized_by;
-    std::unique_ptr<UserView> _view;
+    std::unique_ptr<ChannelList::User> _view;
 };
 
 } // np1sec_plugin namespace
 
 #include "channel.h"
-#include "user_view.h"
 #include "user_info_dialog.h"
 
 namespace np1sec_plugin {
@@ -83,7 +81,7 @@ User::User(Channel& channel, const std::string& name)
     , _channel(channel)
     , _is_myself(name == channel._room.username())
     , _authorized_by({name})
-    , _view(new UserView(channel._view, *this))
+    , _view(new ChannelList::User(channel._view))
 {
     auto gtk_window = channel._room.gtk_window();
 
@@ -107,7 +105,28 @@ inline bool User::is_authorized() const
 
 inline void User::update_view() const
 {
-    _view->update(*this);
+    auto name = _name;
+
+    if (!is_myself()) {
+        auto myname = channel().my_username();
+
+        if (!was_promoted_by_me()) {
+            if (channel().user_in_chat(myname)) {
+                name = "*" + name;
+            }
+            else {
+                if (is_authorized()) {
+                    name = "*" + name;
+                }
+            }
+        }
+    }
+
+    if (in_chat()) {
+        name += " (chatting)";
+    }
+
+    _view->set_text(name);
 }
 
 inline bool User::in_chat() const
@@ -118,18 +137,18 @@ inline bool User::in_chat() const
 inline void User::authorized_by(std::string name)
 {
     _authorized_by.insert(name);
-    _view->update(*this);
+    update_view();
 }
 
 inline void User::un_authorized_by(std::string name)
 {
     _authorized_by.erase(name);
-    _view->update(*this);
+    update_view();
 }
 
 inline void User::set_promoted(bool value) {
     _was_promoted = value;
-    _view->update(*this);
+    update_view();
 }
 
 inline bool User::was_promoted() const {

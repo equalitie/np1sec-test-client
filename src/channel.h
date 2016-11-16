@@ -52,7 +52,7 @@ public:
     void promote_user(const std::string& username);
     User* find_user(const std::string&);
     size_t size() const { return _users.size(); }
-    const std::string& my_username() const { return _room.username(); }
+    const std::string& my_username() const;
     bool user_in_chat(const std::string&) const;
 
 public:
@@ -118,7 +118,7 @@ private:
     np1sec::Channel* _delegate;
 
     Room& _room;
-    ChannelView _view;
+    ChannelList::Channel _view;
     std::map<std::string, std::unique_ptr<User>> _users;
 };
 
@@ -136,7 +136,7 @@ namespace np1sec_plugin {
 inline Channel::Channel(np1sec::Channel* delegate, Room& room)
     : _delegate(delegate)
     , _room(room)
-    , _view(_room.get_view(), std::to_string(size_t(_delegate)))
+    , _view(_room.get_view().channel_list(), std::to_string(size_t(_delegate)))
 {
     for (const auto& user : _delegate->users()) {
         auto& u = add_member(user);
@@ -155,6 +155,11 @@ inline Channel::Channel(np1sec::Channel* delegate, Room& room)
         }
         _room.join_channel(_delegate);
     };
+}
+
+inline const std::string& Channel::my_username() const
+{
+    return _room.username();
 }
 
 inline bool Channel::user_in_chat(const std::string& name) const
