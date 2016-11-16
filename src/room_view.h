@@ -19,10 +19,14 @@
 #pragma once
 
 #include "defer.h"
+#include "notebook.h"
+
+#include <pidgin/gtkimhtml.h>
 
 namespace np1sec_plugin {
 
 class ChannelList;
+class ChannelListPage;
 
 class RoomView {
 public:
@@ -35,28 +39,33 @@ public:
 
     ~RoomView();
 
-    ChannelList& channel_list() { return *_channel_list; }
+    ChannelList& channel_list();
+    Notebook& notebook() { return _notebook; }
+
+    GtkIMHtml* input_imhtml();
+
+    void set_output_window(GtkWidget* output_widget);
 
 private:
-    GtkWidget* get_nth_child(gint n, GtkContainer*);
 
 private:
     const std::string _username;
 
-    /*
-     * This is a pointer to the widget that holds the output
-     * window and the user list. We modify it in the constructor
-     * and will need to change it back in the destructor.
-     */
-    GtkPaned* _target;
-    GtkWidget* _vpaned;
+    PidginConversation* _gtkconv;
 
-    std::unique_ptr<ChannelList> _channel_list;
+    Notebook _notebook; // Where the tabs are
+    std::unique_ptr<ChannelListPage> _channel_list_page;
+
+    GtkWidget* _content;
+    GtkWidget* _parent;
+    GtkWidget* _input_widget;
+    GtkWidget* _default_output_imhtml;
 };
 
 } // np1sec_plugin namespace
 
 #include "channel_list.h"
+#include "channel_list_page.h"
 
 namespace np1sec_plugin {
 
@@ -68,96 +77,74 @@ inline RoomView::RoomView(PurpleConversation* conv, const std::string& username)
 {
     // TODO: Throw instead of assert.
 
-    auto* gtkconv = PIDGIN_CONVERSATION(conv);
+    _gtkconv = PIDGIN_CONVERSATION(conv);
 
-    if (!gtkconv) {
+    if (!_gtkconv) {
         assert(0 && "Not a pidgin conversation");
         return;
     }
 
-    GtkWidget* parent = gtk_widget_get_parent(gtkconv->lower_hbox);
+    _content = gtk_widget_get_parent(_gtkconv->lower_hbox);
 
-    if (!GTK_IS_CONTAINER(parent)) {
+    if (!GTK_IS_CONTAINER(_content)) {
         assert(0);
         return;
     }
 
-    if (!GTK_IS_BOX(parent)) {
+    if (!GTK_IS_BOX(_content)) {
         assert(0);
         return;
     }
 
-    /*
-     * The widget with the chat output window is at this position
-     * in the VBox as coded in pidin/gtkconv.c/setup_common_pane.
-     * I haven't found a better way to find that window unfortunatelly
-     * other than this hardcoded position.
-     * TODO: I have a hunch that for the IM window (as opposed to
-     * Group Chat window) this number is going to be different.
-     */
-    const gint output_window_position = 2;
+    _default_output_imhtml = _gtkconv->imhtml;
 
-    GtkWidget* target = get_nth_child(output_window_position, GTK_CONTAINER(parent));
+    g_object_ref(_content);
+    _parent = gtk_widget_get_parent(_content);
+    gtk_container_remove(GTK_CONTAINER(_parent), GTK_WIDGET(_content));
+	gtk_container_add(GTK_CONTAINER(_parent), _notebook.root_widget());
 
-    assert(GTK_IS_PANED(target));
+    _input_widget = util::gtk::get_nth_child(4, GTK_CONTAINER(_content));
+    g_object_ref(_input_widget);
+    gtk_container_remove(GTK_CONTAINER(_content), _input_widget);
+    gtk_box_pack_end(GTK_BOX(_parent), _input_widget, FALSE, FALSE, 0);
 
-    if (!target) {
-        assert(target);
-        return;
-    }
+    _channel_list_page.reset(new ChannelListPage(*this, GTK_BOX(_content), _default_output_imhtml));
+}
 
-    _target = GTK_PANED(target);
+inline
+ChannelList& RoomView::channel_list()
+{
+    return _channel_list_page->channel_list();
+}
 
-    GtkWidget* userlist = gtk_paned_get_child2(_target);
+inline
+void RoomView::set_output_window(GtkWidget* output_widget)
+{
+    _gtkconv->imhtml = output_widget;
+}
 
-    g_object_ref(userlist);
-    auto unref_userlist = defer([ul = userlist] { g_object_unref(ul); });
-
-    gtk_container_remove(GTK_CONTAINER(target), userlist);
-
-    _vpaned = gtk_vpaned_new();
-    gtk_paned_pack2(_target, _vpaned, TRUE, TRUE);
-
-    gtk_widget_show(_vpaned);
-
-    gtk_paned_pack1(GTK_PANED(_vpaned), userlist, TRUE, TRUE);
-
-    _channel_list.reset(new ChannelList(username));
-    gtk_paned_pack2(GTK_PANED(_vpaned), _channel_list->root_widget(), TRUE, TRUE);
-
-    // TODO: Not sure why the value of 1 gives a good result
-    gtk_widget_set_size_request(_vpaned, 1, -1);
+inline
+GtkIMHtml* RoomView::input_imhtml()
+{
+    return GTK_IMHTML(_gtkconv->entry);
 }
 
 inline RoomView::~RoomView()
 {
-    // Remove the channel list and add the userlist back as it was.
-    GtkWidget* userlist = gtk_paned_get_child1(GTK_PANED(_vpaned));
+    _gtkconv->imhtml = _default_output_imhtml;
 
-    g_object_ref(userlist);
-    auto unref_userlist = defer([ul = userlist] { g_object_unref(ul); });
-
-    gtk_container_remove(GTK_CONTAINER(_vpaned), userlist);
-    gtk_container_remove(GTK_CONTAINER(_target), _vpaned);
-
-    gtk_paned_pack2(_target, userlist, FALSE, TRUE);
-    gtk_widget_show(GTK_WIDGET(_target));
-    gtk_widget_show(GTK_WIDGET(userlist));
-}
-
-inline
-GtkWidget* RoomView::get_nth_child(gint n, GtkContainer* c) {
-    GList* children = gtk_container_get_children(c);
-    
-    auto free_children = defer([children] { g_list_free(children); });
-    
-    for (auto* l = children; l != NULL; l = l->next) {
-        if (n-- == 0) {
-            return GTK_WIDGET(l->data);
-        }
+    if (auto p = gtk_widget_get_parent(_input_widget)) {
+        gtk_container_remove(GTK_CONTAINER(p), _input_widget);
     }
-    
-    return nullptr;
+
+	gtk_box_pack_start(GTK_BOX(_content), _input_widget, FALSE, TRUE, 0);
+
+    gtk_container_remove(GTK_CONTAINER(_parent), _notebook.root_widget());
+    _channel_list_page.reset();
+    gtk_container_add(GTK_CONTAINER(_parent), _content);
+
+    g_object_unref(_content);
+    g_object_unref(_input_widget);
 }
 
 } // np1sec_plugin namespace

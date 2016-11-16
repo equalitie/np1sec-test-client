@@ -32,7 +32,7 @@ public:
     class User;
 
 public:
-    ChannelList(const std::string& username);
+    ChannelList();
 
     ChannelList(ChannelList&&) = delete;
     ChannelList(const ChannelList&) = delete;
@@ -58,8 +58,6 @@ private:
 private:
     friend class Channel;
     friend class UserView;
-
-    const std::string _username;
 
     GtkTreeView* _tree_view;
     GtkTreeStore* _tree_store;
@@ -134,16 +132,13 @@ private:
     GtkTreeIter _iter;
 };
 
-//} // np1sec_plugin namespace
-//namespace np1sec_plugin {
-
 //------------------------------------------------------------------------------
 // ChannelList implementation
 //------------------------------------------------------------------------------
-inline ChannelList::ChannelList(const std::string& username)
-    : _username(username)
+inline ChannelList::ChannelList()
 {
     _tree_view = GTK_TREE_VIEW(gtk_tree_view_new());
+    g_object_ref(_tree_view);
 
     gtk_widget_show(GTK_WIDGET(_tree_view));
 
@@ -163,6 +158,7 @@ inline ChannelList::ChannelList(const std::string& username)
 inline ChannelList::~ChannelList()
 {
     g_object_unref(_tree_store);
+    g_object_unref(_tree_view);
 }
 
 inline
@@ -203,7 +199,7 @@ gboolean ChannelList::on_button_pressed( GtkWidget*
         GtkTreeIter iter;
         gtk_tree_model_get_iter(GTK_TREE_MODEL(v->_tree_store), &iter, path);
 
-        auto path_str = util::tree_iter_to_path(iter, v->_tree_store);
+        auto path_str = util::gtk::tree_iter_to_path(iter, v->_tree_store);
 
         auto action_i = v->_show_popup_callbacks.find(path_str);
 
@@ -259,7 +255,7 @@ inline ChannelList::Channel::Channel(ChannelList& list, const std::string& name)
 inline
 std::string ChannelList::Channel::path() const
 {
-    return util::tree_iter_to_path(_iter, _channel_list._tree_store);
+    return util::gtk::tree_iter_to_path(_iter, _channel_list._tree_store);
 }
 
 inline ChannelList::Channel::~Channel()
@@ -282,7 +278,7 @@ ChannelList::User::User(ChannelList::Channel& channel)
 
     expand(_iter);
 
-    auto path = util::tree_iter_to_path(_iter, rv._tree_store);
+    auto path = util::gtk::tree_iter_to_path(_iter, rv._tree_store);
 
     rv._show_popup_callbacks[path] = [this] (GdkEventButton* e) {
         show_popup(e, popup_actions);

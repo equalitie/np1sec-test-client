@@ -18,10 +18,41 @@
 
 #pragma once
 
+#include <string>
+#include <pidgin/gtkimhtml.h>
 #include "defer.h"
 
 namespace np1sec_plugin {
-namespace util {
+namespace util { namespace gtk {
+
+inline
+GtkWidget* get_nth_child(gint n, GtkContainer* c) {
+    GList* children = gtk_container_get_children(c);
+    
+    auto free_children = defer([children] { g_list_free(children); });
+    
+    for (auto* l = children; l != NULL; l = l->next) {
+        if (n-- == 0) {
+            return GTK_WIDGET(l->data);
+        }
+    }
+    
+    return nullptr;
+}
+
+inline
+std::string remove_text(GtkIMHtml* imhtml) {
+    auto text = gtk_imhtml_get_text(imhtml, NULL, NULL);
+    auto free_text = defer([text] { g_free(text); });
+    gtk_imhtml_clear(imhtml);
+    return std::string(text);
+}
+
+inline
+void set_text(GtkIMHtml* imhtml, const std::string& str) {
+    gtk_imhtml_clear(imhtml);
+    gtk_imhtml_append_text(imhtml, str.c_str(), GtkIMHtmlOptions(0));
+}
 
 inline
 std::string tree_iter_to_path(const GtkTreeIter& iter, GtkTreeStore* store)
@@ -35,5 +66,6 @@ std::string tree_iter_to_path(const GtkTreeIter& iter, GtkTreeStore* store)
     return std::string(c_str);
 }
 
+} // gtk namespace
 } // util namespace
 } // np1sec_plugin namespace

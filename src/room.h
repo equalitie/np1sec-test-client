@@ -320,6 +320,8 @@ void Room::joined_channel(np1sec::Channel* channel)
     auto& ch = *channel_i->second;
     ch.set_user_public_key(_username, _private_key.public_key());
 
+    ch.mark_as_joined();
+
     if (channel->in_chat()) {
         ch.joined_chat();
     }

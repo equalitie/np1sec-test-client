@@ -31,6 +31,7 @@ namespace np1sec_plugin {
 
 class Room;
 class User;
+class ChannelPage;
 
 class Channel final : public np1sec::ChannelInterface {
     using PublicKey = np1sec::PublicKey;
@@ -54,6 +55,8 @@ public:
     size_t size() const { return _users.size(); }
     const std::string& my_username() const;
     bool user_in_chat(const std::string&) const;
+    void mark_as_joined();
+    std::string channel_name() const;
 
 public:
     /*
@@ -120,6 +123,9 @@ private:
     Room& _room;
     ChannelList::Channel _view;
     std::map<std::string, std::unique_ptr<User>> _users;
+
+    // Is non null iff we've joined the channel.
+    std::unique_ptr<ChannelPage> _channel_page;
 };
 
 } // np1sec_plugin namespace
@@ -127,6 +133,7 @@ private:
 /* plugin headers */
 #include "room.h"
 #include "user.h"
+#include "channel_page.h"
 
 namespace np1sec_plugin {
 
@@ -136,7 +143,7 @@ namespace np1sec_plugin {
 inline Channel::Channel(np1sec::Channel* delegate, Room& room)
     : _delegate(delegate)
     , _room(room)
-    , _view(_room.get_view().channel_list(), std::to_string(size_t(_delegate)))
+    , _view(_room.get_view().channel_list(), channel_name())
 {
     for (const auto& user : _delegate->users()) {
         auto& u = add_member(user);
@@ -155,6 +162,17 @@ inline Channel::Channel(np1sec::Channel* delegate, Room& room)
         }
         _room.join_channel(_delegate);
     };
+}
+
+inline std::string Channel::channel_name() const
+{
+    return std::to_string(size_t(_delegate));
+}
+
+inline void Channel::mark_as_joined()
+{
+    _channel_page.reset(new ChannelPage(_room._room_view, *this));
+    //_channel_page->set_current();
 }
 
 inline const std::string& Channel::my_username() const
