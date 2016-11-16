@@ -98,7 +98,6 @@ private:
     using ChannelMap = std::map<np1sec::Channel*, std::unique_ptr<Channel>>;
 
     PurpleConversation *_conv;
-    PurpleAccount *_account;
     std::string _username;
     TimerToken::Storage _timers;
     np1sec::PrivateKey _private_key;
@@ -124,8 +123,7 @@ namespace np1sec_plugin {
 inline
 Room::Room(PurpleConversation* conv)
     : _conv(conv)
-    , _account(conv->account)
-    , _username(sanitize_name(_account->username))
+    , _username(sanitize_name(conv->account->username))
     , _private_key(np1sec::PrivateKey::generate())
     , _room_view(conv, _username)
     , _toolbar(new Toolbar(PIDGIN_CONVERSATION(conv)))
