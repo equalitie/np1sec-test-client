@@ -51,7 +51,6 @@ public:
     void set_user_public_key(const std::string& username, const PublicKey&);
     void promote_user(const std::string& username);
     User* find_user(const std::string&);
-    bool everyone_promoted_everyone() const;
     size_t size() const { return _users.size(); }
     const std::string& my_username() const { return _room.username(); }
     bool user_in_chat(const std::string&) const;
@@ -161,24 +160,6 @@ inline Channel::Channel(np1sec::Channel* delegate, Room& room)
 inline bool Channel::user_in_chat(const std::string& name) const
 {
     return _delegate->user_in_chat(name);
-}
-
-inline
-bool Channel::everyone_promoted_everyone() const
-{
-    std::set<std::string> all_users;
-
-    for (const auto& u : _users | boost::adaptors::map_keys) {
-        all_users.insert(u);
-    }
-
-    for (const auto& u : _users | boost::adaptors::map_values) {
-        if (u->authorized_by() != all_users) {
-            return false;
-        }
-    }
-
-    return true;
 }
 
 inline
