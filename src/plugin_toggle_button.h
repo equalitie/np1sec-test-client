@@ -44,6 +44,7 @@ private:
     PurpleConversation* _conv;
     PidginConversation* _gtkconv;
     GtkWidget* _button = nullptr;
+    bool _toggleable = true;
 };
 
 //------------------------------------------------------------------------------
@@ -54,40 +55,57 @@ PluginToggleButton::PluginToggleButton(PurpleConversation* conv)
     : _conv(conv)
     , _gtkconv(PIDGIN_CONVERSATION(conv))
 {
-    //if (! purple_prefs_exists("/np1sec")) {
-    //    purple_prefs_add_none("/np1sec");
-    //}
+    if (_toggleable) {
+        if (! purple_prefs_exists("/np1sec")) {
+            purple_prefs_add_none("/np1sec");
+        }
 
-    //if (! purple_prefs_exists("/np1sec/conversation/")) {
-    //    purple_prefs_add_none("/np1sec/conversation");
-    //}
+        if (! purple_prefs_exists("/np1sec/conversation/")) {
+            purple_prefs_add_none("/np1sec/conversation");
+        }
 
-    //auto s = std::string("/np1sec/conversation/") + _conv->name;
+        auto s = std::string("/np1sec/conversation/") + _conv->name;
 
-    //if (! purple_prefs_exists(s.c_str())) {
-    //    purple_prefs_add_none(s.c_str());
-    //}
+        if (! purple_prefs_exists(s.c_str())) {
+            purple_prefs_add_none(s.c_str());
+        }
 
-	//if (purple_prefs_get_bool(prefs_str().c_str())) {
-    //    enable();
-    //}
+        _button = gtk_button_new_with_label("Toggle np1sec");
+        gtk_box_pack_start(GTK_BOX(_gtkconv->infopane_hbox), _button, FALSE, FALSE, 0);
 
-    _button = gtk_button_new_with_label("Go secure");
-    gtk_box_pack_start(GTK_BOX(_gtkconv->infopane_hbox), _button, FALSE, FALSE, 0);
-
-    gtk_widget_show(_button);
+	    if (purple_prefs_get_bool(prefs_str().c_str())) {
+            enable();
+        }
+    }
+    else {
+        _button = gtk_button_new_with_label("Go secure");
+        gtk_box_pack_start(GTK_BOX(_gtkconv->infopane_hbox), _button, FALSE, FALSE, 0);
+    }
 
     gtk_signal_connect(GTK_OBJECT(_button), "clicked"
             , GTK_SIGNAL_FUNC(on_click), this);
+
+    gtk_widget_show(_button);
 }
 
 inline
 void PluginToggleButton::on_click(GtkWidget*, PluginToggleButton* self)
 {
-    purple_prefs_set_bool(self->prefs_str().c_str(), true);
-    gtk_container_remove(GTK_CONTAINER(self->_gtkconv->infopane_hbox), self->_button);
-    self->_button = nullptr;
-    self->enable();
+    if (self->_toggleable) {
+        if (self->room) {
+            purple_prefs_set_bool(self->prefs_str().c_str(), false);
+            self->disable();
+        }
+        else {
+            purple_prefs_set_bool(self->prefs_str().c_str(), true);
+            self->enable();
+        }
+    }
+    else {
+        gtk_container_remove(GTK_CONTAINER(self->_gtkconv->infopane_hbox), self->_button);
+        self->_button = nullptr;
+        self->enable();
+    }
 }
 
 inline
