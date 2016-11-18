@@ -31,6 +31,8 @@ public:
 
     ChannelList& channel_list() { return *_channel_list; }
 
+    GtkIMHtml* output_imhtml() { return GTK_IMHTML(_output_imhtml); }
+
     ~ChannelListPage();
 
 private:
@@ -107,7 +109,7 @@ ChannelListPage::ChannelListPage(RoomView& rv, GtkBox* content, GtkWidget* outpu
 
     _tab->on_set_current([&] {
             util::gtk::set_text(rv.input_imhtml(), _stored_input);
-            rv.set_output_window(_output_imhtml);
+            //rv.set_output_window(_output_imhtml);
         });
 
     _tab->on_set_not_current([&] {

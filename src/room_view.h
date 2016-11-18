@@ -25,8 +25,10 @@
 
 namespace np1sec_plugin {
 
-class ChannelList;
+class ChannelPage;
 class ChannelListPage;
+
+class ChannelList;
 
 class RoomView {
 public:
@@ -44,13 +46,15 @@ public:
 
     GtkIMHtml* input_imhtml();
 
-    void set_output_window(GtkWidget* output_widget);
+    ChannelPage* current_channel_page() { return _current_channel_page; }
 
 private:
+    friend class ChannelPage;
 
 private:
     const std::string _username;
 
+    PurpleConversation* _conv;
     PidginConversation* _gtkconv;
 
     Notebook _notebook; // Where the tabs are
@@ -60,6 +64,8 @@ private:
     GtkWidget* _parent;
     GtkWidget* _input_widget;
     GtkWidget* _default_output_imhtml;
+
+    ChannelPage* _current_channel_page = nullptr;
 };
 
 } // np1sec_plugin namespace
@@ -77,6 +83,7 @@ inline RoomView::RoomView(PurpleConversation* conv, const std::string& username)
 {
     // TODO: Throw instead of assert.
 
+    _conv = conv;
     _gtkconv = PIDGIN_CONVERSATION(conv);
 
     if (!_gtkconv) {
@@ -115,12 +122,6 @@ inline
 ChannelList& RoomView::channel_list()
 {
     return _channel_list_page->channel_list();
-}
-
-inline
-void RoomView::set_output_window(GtkWidget* output_widget)
-{
-    _gtkconv->imhtml = output_widget;
 }
 
 inline

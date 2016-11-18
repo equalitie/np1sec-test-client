@@ -216,10 +216,6 @@ gboolean np1sec_plugin_load(PurplePlugin* plugin)
 		convs = convs->next;
 	}
 
-    //---------------------------------------------------
-
-    std::cout << "(n+1)sec plugin loaded" << std::endl;
-
     return true;
 }
 
@@ -242,7 +238,6 @@ gboolean np1sec_plugin_unload(PurplePlugin* plugin)
 
     g_conversations.clear();
 
-    std::cout << "(n+1)sec plugin unloaded" << std::endl;
     return true;
 }
 

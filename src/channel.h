@@ -295,7 +295,8 @@ void Channel::authorized()
 
 void Channel::message_received(const std::string& username, const std::string& message)
 {
-    _room.display(username, message);
+    assert(_channel_page);
+    _channel_page->display(username, message);
 }
 
 void Channel::user_joined_chat(const std::string& username)
