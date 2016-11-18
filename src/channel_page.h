@@ -51,10 +51,17 @@ inline
 ChannelPage::ChannelPage(RoomView& room_view, Channel& channel)
 {
     _output_imhtml = gtk_imhtml_new(NULL, NULL);
+	auto* sw = gtk_scrolled_window_new(NULL, NULL);
 
+    gtk_widget_show_all(sw);
     gtk_widget_show_all(_output_imhtml);
 
-    _tab.reset(new Notebook::Page(room_view.notebook(), _output_imhtml, channel.channel_name()));
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(sw), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+    gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(sw), GTK_SHADOW_NONE);
+
+    gtk_container_add(GTK_CONTAINER(sw), _output_imhtml);
+
+    _tab.reset(new Notebook::Page(room_view.notebook(), sw, channel.channel_name()));
 
     _tab->on_set_current([&] {
             util::gtk::set_text(room_view.input_imhtml(), _stored_input);
