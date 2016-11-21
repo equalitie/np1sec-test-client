@@ -57,6 +57,8 @@ public:
 
     const Channel& channel() const { return _channel; }
 
+    bool needs_authorization_from_me() const;
+
 private:
     std::string _name;
     Channel& _channel;
@@ -91,11 +93,35 @@ User::User(Channel& channel, const std::string& name)
 
     auto& room = channel._room;
 
-    if (name != channel._room.username()) {
-        _view->popup_actions["Authorize"] = [this, &room, name] {
+    if (needs_authorization_from_me()) {
+        auto authorize = [this, &room, name] {
             room.authorize(name);
         };
+
+        _view->popup_actions["Authorize"] = authorize;
+        _view->on_double_click = authorize;
     }
+}
+
+inline
+bool User::needs_authorization_from_me() const
+{
+    if (is_myself()) return false;
+
+    auto myname = channel().my_username();
+
+    if (!was_promoted_by_me()) {
+        if (channel().user_in_chat(myname)) {
+            return true;
+        }
+        else {
+            if (is_authorized()) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 inline bool User::is_authorized() const
@@ -107,19 +133,8 @@ inline void User::update_view() const
 {
     auto name = _name;
 
-    if (!is_myself()) {
-        auto myname = channel().my_username();
-
-        if (!was_promoted_by_me()) {
-            if (channel().user_in_chat(myname)) {
-                name = "*" + name;
-            }
-            else {
-                if (is_authorized()) {
-                    name = "*" + name;
-                }
-            }
-        }
+    if (needs_authorization_from_me()) {
+        name = "*" + name;
     }
 
     if (in_chat()) {

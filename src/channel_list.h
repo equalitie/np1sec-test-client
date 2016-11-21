@@ -124,6 +124,8 @@ public:
 
     void set_text(const std::string&);
 
+    std::function<void()> on_double_click;
+
 private:
     void expand(GtkTreeIter& iter);
 
@@ -271,23 +273,32 @@ inline
 ChannelList::User::User(ChannelList::Channel& channel)
     : _channel_view(channel)
 {
-    auto& rv = _channel_view._channel_list;
-    auto* tree_store = rv._tree_store;
+    auto& cl = _channel_view._channel_list;
+    auto* tree_store = cl._tree_store;
 
     gtk_tree_store_append(tree_store, &_iter, &_channel_view._iter);
 
     expand(_iter);
 
-    auto path = util::gtk::tree_iter_to_path(_iter, rv._tree_store);
+    auto path = util::gtk::tree_iter_to_path(_iter, cl._tree_store);
 
-    rv._show_popup_callbacks[path] = [this] (GdkEventButton* e) {
+    cl._show_popup_callbacks[path] = [this] (GdkEventButton* e) {
         show_popup(e, popup_actions);
+    };
+
+    cl._double_click_callbacks[path] = [this] {
+        if (on_double_click) on_double_click();
     };
 }
 
 inline
 ChannelList::User::~User() {
-    gtk_tree_store_remove(_channel_view._channel_list._tree_store, &_iter);
+    auto& cl = _channel_view._channel_list;
+    auto path = util::gtk::tree_iter_to_path(_iter, cl._tree_store);
+
+    gtk_tree_store_remove(cl._tree_store, &_iter);
+
+    cl._double_click_callbacks.erase(path);
 }
 
 inline
