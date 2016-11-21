@@ -47,6 +47,17 @@ std::ostream& operator<<(std::ostream& os, const std::list<T>& s) {
     return os;
 }
 
+template<class T>
+std::ostream& operator<<(std::ostream& os, const std::vector<T>& s) {
+    os << "(";
+    for (auto i = s.begin(); i != s.end(); ++i) {
+        if (i != s.begin()) os << ", ";
+        os << *i;
+    }
+    os << ")";
+    return os;
+}
+
 namespace np1sec_plugin {
 namespace util {
 

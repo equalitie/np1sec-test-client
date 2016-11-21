@@ -199,7 +199,7 @@ bool Room::interpret_as_command(const std::string& cmd)
     try {
         inform("$ ", p.text);
 
-        auto c = parse<string>(p);
+        auto c = p.read_word();
 
         if (c == "help") {
             inform("<br>"
@@ -218,14 +218,14 @@ bool Room::interpret_as_command(const std::string& cmd)
             _room->search_channels();
         }
         else if (c == "authorize") {
-            auto user = parse<string>(p);
+            auto user = p.read_word();
             authorize(user);
         }
         else if (c == "create-channel") {
             _room->create_channel();
         }
         else if (c == "join-channel") {
-            auto channel_id_str = parse<string>(p);
+            auto channel_id_str = p.read_word();
             np1sec::Channel* channel = nullptr;
             try {
                 channel = reinterpret_cast<np1sec::Channel*>(std::stoi(channel_id_str));
@@ -295,7 +295,7 @@ Room::new_channel(np1sec::Channel* channel)
     _toolbar.reset();
 
     inform("Room::new_channel(", size_t(channel),
-           ") with participants: ", encode_range(channel->users()));
+           ") with participants: ", channel->users());
 
     if (_channels.count(channel) != 0) {
         assert(0 && "Channel already present");
