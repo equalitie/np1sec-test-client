@@ -18,12 +18,64 @@
 
 #pragma once
 
-#include <string>
+#include <set>
+#include <list>
+#include <ostream>
+#include <sstream>
 #include <pidgin/gtkimhtml.h>
 #include "defer.h"
 
+template<class T>
+std::ostream& operator<<(std::ostream& os, const std::set<T>& s) {
+    os << "{";
+    for (auto i = s.begin(); i != s.end(); ++i) {
+        if (i != s.begin()) os << ", ";
+        os << *i;
+    }
+    os << "}";
+    return os;
+}
+
+template<class T>
+std::ostream& operator<<(std::ostream& os, const std::list<T>& s) {
+    os << "[";
+    for (auto i = s.begin(); i != s.end(); ++i) {
+        if (i != s.begin()) os << ", ";
+        os << *i;
+    }
+    os << "]";
+    return os;
+}
+
 namespace np1sec_plugin {
-namespace util { namespace gtk {
+namespace util {
+
+namespace _detail {
+    void stringify(std::ostream& os) {
+    }
+
+    template<class Arg, class... Args>
+    void stringify(std::ostream& os, Arg&& arg, Args&&... args) {
+        os << arg;
+        stringify(os, std::forward<Args>(args)...);
+    }
+}
+
+template<class... Args>
+std::string str(Args&&... args) {
+    std::stringstream ss;
+    _detail::stringify(ss, std::forward<Args>(args)...);
+    return ss.str();
+}
+
+template<class... Args>
+std::string inform_str(Args&&... args) {
+    std::stringstream ss;
+    _detail::stringify(ss, std::forward<Args>(args)...);
+    return "<font color=\"#9A9A9A\">" + ss.str() + "</font>";
+}
+
+namespace gtk {
 
 inline
 GtkWidget* get_nth_child(gint n, GtkContainer* c) {

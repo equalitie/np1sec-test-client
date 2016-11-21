@@ -344,7 +344,7 @@ template<class... Args>
 inline
 void Room::inform(Args&&... args)
 {
-    display(_username, "<font color=\"#9A9A9A\">" + util::str(std::forward<Args>(args)...) + "</font>");
+    display(_username, util::inform_str(std::forward<Args>(args)...));
 }
 
 inline

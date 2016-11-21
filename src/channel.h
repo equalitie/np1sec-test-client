@@ -115,6 +115,8 @@ private:
      */
     size_t channel_id() const { return size_t(_delegate); }
 
+    template<class... Args> void inform(Args&&...);
+
 private:
     friend class User;
 
@@ -157,7 +159,7 @@ inline Channel::Channel(np1sec::Channel* delegate, Room& room)
          * library.
          */
         if (_room.find_user_in_channel(_room.username())) {
-            _room.inform("Already in a channel");
+            inform("Already in a channel");
             return;
         }
         _room.join_channel(_delegate);
@@ -172,7 +174,11 @@ inline std::string Channel::channel_name() const
 inline void Channel::mark_as_joined()
 {
     _channel_page.reset(new ChannelPage(_room._room_view, *this));
-    //_channel_page->set_current();
+    _channel_page->set_current();
+
+    for (auto& user : _users | boost::adaptors::map_values) {
+        user->bind_user_list(_channel_page->user_list());
+    }
 }
 
 inline const std::string& Channel::my_username() const
@@ -215,8 +221,12 @@ inline User& Channel::add_member(const std::string& username)
 {
     assert(_users.count(username) == 0);
 
-    auto i = _users.emplace(username,
-                            std::make_unique<User>(*this, username));
+    auto u = new User(*this, username);
+    auto i = _users.emplace(username, std::unique_ptr<User>(u));
+
+    if (_channel_page) {
+        u->bind_user_list(_channel_page->user_list());
+    }
 
     return *(i.first->second.get());
 }
@@ -224,7 +234,7 @@ inline User& Channel::add_member(const std::string& username)
 inline
 void Channel::user_joined(const std::string& username)
 {
-    _room.inform("Channel::user_joined(", channel_id(), ", ", username, ")");
+    inform("Channel::user_joined(", channel_id(), ", ", username, ")");
 
     for (const auto& user : _users | boost::adaptors::map_values) {
         user->set_promoted(false);
@@ -237,7 +247,7 @@ void Channel::user_joined(const std::string& username)
 
 void Channel::user_left(const std::string& username)
 {
-    _room.inform("Channel::user_left(", channel_id(), ", ", username, ")");
+    inform("Channel::user_left(", channel_id(), ", ", username, ")");
     _users.erase(username);
 
     if (_users.empty()) {
@@ -253,18 +263,18 @@ void Channel::user_left(const std::string& username)
 
 void Channel::user_authenticated(const std::string& username, const PublicKey& public_key)
 {
-    _room.inform("Channel::user_authenticated(", channel_id(), ", ", username, ")");
+    inform("Channel::user_authenticated(", channel_id(), ", ", username, ")");
     set_user_public_key(username, public_key);
 }
 
 void Channel::user_authentication_failed(const std::string& username)
 {
-    _room.inform("Channel::user_authentication_failed(", channel_id(), ", ", username, ")");
+    inform("Channel::user_authentication_failed(", channel_id(), ", ", username, ")");
 }
 
 void Channel::user_authorized_by(const std::string& user, const std::string& target)
 {
-    _room.inform("Channel::user_authorized_by(", channel_id(), ", ", target, " by ", user, ")");
+    inform("Channel::user_authorized_by(", channel_id(), ", ", target, " by ", user, ")");
 
     auto target_p = find_user(target);
 
@@ -278,20 +288,28 @@ void Channel::user_authorized_by(const std::string& user, const std::string& tar
 
 void Channel::user_promoted(const std::string& username)
 {
-    _room.inform("Channel::user_promoted(", channel_id(), ", ", username, ")");
+    inform("Channel::user_promoted(", channel_id(), ", ", username, ")");
     promote_user(username);
 }
 
 void Channel::joined()
 {
-    _room.inform("Channel::joined(", channel_id(), ")");
+    inform("Channel::joined(", channel_id(), ")");
 }
 
 void Channel::authorized()
 {
-    _room.inform("Channel::authorized(", channel_id(), ")");
+    inform("Channel::authorized(", channel_id(), ")");
 }
 
+template<class... Args>
+void Channel::inform(Args&&... args)
+{
+    if (_channel_page) {
+        _channel_page->display(my_username(), util::inform_str(args...));
+    }
+    _room.inform(std::forward<Args>(args)...);
+}
 
 void Channel::message_received(const std::string& username, const std::string& message)
 {
@@ -301,7 +319,7 @@ void Channel::message_received(const std::string& username, const std::string& m
 
 void Channel::user_joined_chat(const std::string& username)
 {
-    _room.inform("Channel::user_joined_chat(", username, ")");
+    inform("Channel::user_joined_chat(", username, ")");
     if (auto u = find_user(username)) {
         u->update_view();
     }
@@ -309,7 +327,7 @@ void Channel::user_joined_chat(const std::string& username)
 
 void Channel::joined_chat()
 {
-    _room.inform("Channel::joined_chat()");
+    inform("Channel::joined_chat()");
     /**
      * There are properties of other users that this user couldn't have
      * seen previously (e.g. whether they are in the chat), so we need to

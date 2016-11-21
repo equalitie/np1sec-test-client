@@ -20,6 +20,7 @@
 
 #include "src/crypto.h"
 #include "popup.h"
+#include "user_list.h"
 
 #include <boost/optional.hpp>
 
@@ -53,11 +54,13 @@ public:
 
     bool in_chat() const;
 
-    void update_view() const;
+    void update_view();
 
     const Channel& channel() const { return _channel; }
 
     bool needs_authorization_from_me() const;
+
+    void bind_user_list(UserList&);
 
 private:
     std::string _name;
@@ -66,6 +69,7 @@ private:
     bool _was_promoted = false;
     std::set<std::string> _authorized_by;
     std::unique_ptr<ChannelList::User> _view;
+    UserList::User _view_in_channel;
 };
 
 } // np1sec_plugin namespace
@@ -100,7 +104,15 @@ User::User(Channel& channel, const std::string& name)
 
         _view->popup_actions["Authorize"] = authorize;
         _view->on_double_click = authorize;
+        _view_in_channel.on_double_click = authorize;
     }
+}
+
+inline
+void User::bind_user_list(UserList& user_list)
+{
+    _view_in_channel.bind(user_list);
+    update_view();
 }
 
 inline
@@ -129,7 +141,7 @@ inline bool User::is_authorized() const
     return _channel._delegate->user_is_authorized(_name);
 }
 
-inline void User::update_view() const
+inline void User::update_view()
 {
     auto name = _name;
 
@@ -142,6 +154,7 @@ inline void User::update_view() const
     }
 
     _view->set_text(name);
+    _view_in_channel.set_text(name);
 }
 
 inline bool User::in_chat() const

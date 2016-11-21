@@ -20,6 +20,7 @@
 
 #include "gtkimhtml.h"
 #include "pidgin/gtkutils.h"
+#include "user_list.h"
 
 namespace np1sec_plugin {
 
@@ -36,11 +37,14 @@ public:
 
     GtkIMHtml* output_imhtml() { return GTK_IMHTML(_output_imhtml); }
 
+    UserList& user_list() { return _user_list; }
+
 private:
     RoomView& _room_view;
     GtkWidget* _output_imhtml;
     std::unique_ptr<Notebook::Page> _tab;
     std::string _stored_input;
+    UserList _user_list;
 };
 
 } // np1sec_plugin namespace
@@ -67,7 +71,12 @@ ChannelPage::ChannelPage(RoomView& room_view, Channel& channel)
 
     gtk_container_add(GTK_CONTAINER(sw), _output_imhtml);
 
-    _tab.reset(new Notebook::Page(room_view.notebook(), sw, channel.channel_name()));
+    auto paned = gtk_hpaned_new();
+
+    gtk_paned_pack1(GTK_PANED(paned), sw, TRUE, TRUE);
+    gtk_paned_pack2(GTK_PANED(paned), _user_list.root_widget(), FALSE, TRUE);
+
+    _tab.reset(new Notebook::Page(room_view.notebook(), paned, channel.channel_name()));
 
     _tab->on_set_current([&] {
             room_view._current_channel_page = this;
