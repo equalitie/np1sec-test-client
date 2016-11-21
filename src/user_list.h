@@ -222,6 +222,8 @@ inline void UserList::User::bind(UserList& list)
 
     _user_list = &list;
 
+    _user_list->_users.insert(this);
+
     gtk_list_store_append(_user_list->_store, &_iter);
 
     if (!_text.empty()) {
