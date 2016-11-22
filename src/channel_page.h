@@ -18,8 +18,8 @@
 
 #pragma once
 
-#include "gtkimhtml.h"
-#include "pidgin/gtkutils.h"
+#include <pidgin/gtkimhtml.h>
+#include <pidgin/gtkutils.h>
 #include "user_list.h"
 
 namespace np1sec_plugin {

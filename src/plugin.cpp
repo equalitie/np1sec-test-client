@@ -27,16 +27,16 @@
 #include <boost/algorithm/string/predicate.hpp>
 
 /* Purple headers */
-#include "pidgin.h"
-#include "notify.h"
-#include "version.h"
-#include "util.h"
-#include "debug.h"
-#include "core.h"
+#include <pidgin/pidgin.h>
+#include <libpurple/notify.h>
+#include <libpurple/version.h>
+#include <libpurple/util.h>
+#include <libpurple/debug.h>
+#include <libpurple/core.h>
 
 /* Purple GTK headers */
-#include "gtkplugin.h"
-#include "gtkconv.h"
+#include <pidgin/gtkplugin.h>
+#include <pidgin/gtkconv.h>
 
 /* Plugin headers */
 #include "plugin_toggle_button.h"

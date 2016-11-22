@@ -21,8 +21,8 @@ link_directories(
 include_directories(
   "${Boost_INCLUDE_DIR}"
   "${CMAKE_SOURCE_DIR}/src"
-  "${PIDGIN_INC_DIR}/pidgin"
-  "${PIDGIN_INC_DIR}/libpurple"
+  "${PIDGIN_INC_DIR}"
+  "${PIDGIN_INC_DIR}/libpurple" # works around a pidgin bug
   "${NP1SEC_INC_DIR}"
   "${GTK2_INCLUDE_DIRS}"
 )
