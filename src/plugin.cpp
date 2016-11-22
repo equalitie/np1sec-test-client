@@ -41,37 +41,42 @@
 /* Plugin headers */
 #include "plugin_toggle_button.h"
 
-/*
- * Rant: The only reason for this global is because the sending-chat-msg
- * callback doesn't give us PurpleConversation*. Instead it gives us
- * an ID of the chat.
- */
-static std::map<int, PurpleConversation*> g_conversations;
-
 using ToggleButton = np1sec_plugin::PluginToggleButton;
 
 static bool is_chat(PurpleConversation* conv) {
     return conv && conv->type == PURPLE_CONV_TYPE_CHAT;
 }
 
-extern "C" {
-
-#define _(x) const_cast<char*>(x)
-
 //------------------------------------------------------------------------------
+static ToggleButton* get_toggle_button(PurpleAccount* account)
+{
+    auto* p =  g_hash_table_lookup(account->ui_settings, "np1sec_plugin");
+    return static_cast<ToggleButton*>(p);
+}
+
 static ToggleButton* get_toggle_button(PurpleConversation* conv)
 {
-    auto* p =  g_hash_table_lookup(conv->data, "np1sec_plugin");
-    return static_cast<ToggleButton*>(p);
+    return get_toggle_button(conv->account);
+}
+
+static void set_toggle_button(PurpleAccount* account, ToggleButton* tb)
+{
+    if (auto r = get_toggle_button(account)) {
+        delete r;
+    }
+    g_hash_table_insert(account->ui_settings, strdup("np1sec_plugin"), tb);
 }
 
 static void set_toggle_button(PurpleConversation* conv, ToggleButton* tb)
 {
-    if (auto r = get_toggle_button(conv)) {
-        delete r;
-    }
-    g_hash_table_insert(conv->data, strdup("np1sec_plugin"), tb);
+    set_toggle_button(conv->account, tb);
 }
+
+//------------------------------------------------------------------------------
+
+extern "C" {
+
+#define _(x) const_cast<char*>(x)
 
 //------------------------------------------------------------------------------
 static void conversation_created_cb(PurpleConversation *conv)
@@ -82,29 +87,8 @@ static void conversation_created_cb(PurpleConversation *conv)
     set_toggle_button(conv, tb);
 }
 
-static void conversation_updated_cb(PurpleConversation *conv,
-                                    PurpleConvUpdateType type) {
-    if (!is_chat(conv)) return;
-
-    auto* tb = get_toggle_button(conv);
-
-    if (!tb) {
-        // The conversation-created signal has not yet been called.
-        return;
-    }
-
-    auto id = purple_conv_chat_get_id(PURPLE_CONV_CHAT(conv));
-
-    if (g_conversations.count(id) == 0) {
-        g_conversations[id] = conv;
-    }
-}
-
 static void deleting_conversation_cb(PurpleConversation *conv) {
     if (!is_chat(conv)) return;
-
-    auto id = purple_conv_chat_get_id(PURPLE_CONV_CHAT(conv));
-    g_conversations.erase(id);
     set_toggle_button(conv, nullptr);
 }
 
@@ -134,10 +118,7 @@ static gboolean receiving_chat_msg_cb(PurpleAccount *account,
 
 static
 void sending_chat_msg_cb(PurpleAccount *account, char **message, int id) {
-    auto conv_i = g_conversations.find(id);
-    assert(conv_i != g_conversations.end());
-
-    auto tb = get_toggle_button(conv_i->second);
+    auto tb = get_toggle_button(account);
     assert(tb);
 
     if (!tb->room) return;
@@ -170,7 +151,6 @@ static void setup_purple_callbacks(PurplePlugin* plugin)
 
 	purple_signal_connect(conv_handle, "chat-buddy-left", plugin, PURPLE_CALLBACK(chat_buddy_left_cb), NULL);
     purple_signal_connect(conv_handle, "conversation-created", plugin, PURPLE_CALLBACK(conversation_created_cb), NULL);
-    purple_signal_connect(conv_handle, "conversation-updated", plugin, PURPLE_CALLBACK(conversation_updated_cb), NULL);
     purple_signal_connect(conv_handle, "deleting-conversation", plugin, PURPLE_CALLBACK(deleting_conversation_cb), NULL);
     purple_signal_connect(conv_handle, "receiving-chat-msg", plugin, PURPLE_CALLBACK(receiving_chat_msg_cb), NULL);
     purple_signal_connect(conv_handle, "sending-chat-msg", plugin, PURPLE_CALLBACK(sending_chat_msg_cb), NULL);
@@ -185,7 +165,6 @@ static void disconnect_purple_callbacks(PurplePlugin* plugin)
 
 	purple_signal_disconnect(conv_handle, "chat-buddy-left", plugin, PURPLE_CALLBACK(chat_buddy_left_cb));
     purple_signal_disconnect(conv_handle, "conversation-created", plugin, PURPLE_CALLBACK(conversation_created_cb));
-    purple_signal_disconnect(conv_handle, "conversation-updated", plugin, PURPLE_CALLBACK(conversation_updated_cb));
     purple_signal_disconnect(conv_handle, "deleting-conversation", plugin, PURPLE_CALLBACK(deleting_conversation_cb));
     purple_signal_disconnect(conv_handle, "receiving-chat-msg", plugin, PURPLE_CALLBACK(receiving_chat_msg_cb));
     purple_signal_disconnect(conv_handle, "sending-chat-msg", plugin, PURPLE_CALLBACK(sending_chat_msg_cb));
@@ -207,10 +186,6 @@ gboolean np1sec_plugin_load(PurplePlugin* plugin)
         if (is_chat(conv) && !get_toggle_button(conv)) {
             auto* tb = new ToggleButton(conv);
             set_toggle_button(conv, tb);
-
-            auto id = purple_conv_chat_get_id(PURPLE_CONV_CHAT(conv));
-            assert (g_conversations.count(id) == 0);
-            g_conversations[id] = conv;
         }
 
 		convs = convs->next;
@@ -235,8 +210,6 @@ gboolean np1sec_plugin_unload(PurplePlugin* plugin)
 
 		convs = convs->next;
 	}
-
-    g_conversations.clear();
 
     return true;
 }
