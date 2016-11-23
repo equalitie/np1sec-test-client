@@ -5,32 +5,28 @@
 
 ## Dependencies
 ```
-libboost1.58-dev
+cmake
+git
+wget
+libboost1.58-dev (or higher)
+libglib2.0-dev
 libgtk2.0-dev
-pidgin-dev
+libxml2-dev
+libgcrypt-dev
+libgnutls-dev
 ```
 
 ## Build
 
-First build the np1sec library as described on its [github page](https://github.com/equalitie/np1sec).
-
-Then build this plugin:
+np1sec-test-client comes with a convenience script to download and build
+pidgin-2.11, the np1sec library and this plugin. To run it, invoke
 
 ```
-cd <np1sec-test-client dir>
-mkdir -p build
-cd build
-cmake .. -DNP1SEC_LIB_DIR=<where libnp1sec.so can be found> \
-         -DNP1SEC_INC_DIR=<where np1sec headers can be found>
-make
+./run-np1sec.sh
 ```
 
-Copy the plugin where pidgin can find it:
-```
-cp libnp1sec-plugin.so ~/.purple/plugins/
-```
-
-(Re)start pidgin, go to Tools > Plugins and enable the `(n+1)sec Secure messaging` plugin.
+On success, the script shall start pidgin where you can go to
+Tools > Plugins and enable the `(n+1)sec Secure messaging` plugin.
 
 # Setup for developers
 
