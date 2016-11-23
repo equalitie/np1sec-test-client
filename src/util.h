@@ -23,6 +23,7 @@
 #include <ostream>
 #include <sstream>
 #include <pidgin/gtkimhtml.h>
+#include <future>
 #include "defer.h"
 
 template<class T>
@@ -86,20 +87,54 @@ std::string inform_str(Args&&... args) {
     return "<font color=\"#9A9A9A\">" + ss.str() + "</font>";
 }
 
+/**
+ * Execute the function f and report if the execution takes too long.
+ */
+template<class F, class... Args>
+auto exec(const char* msg, F&& f, Args&&... args)
+{
+    using namespace std::chrono;
+
+    auto start = steady_clock::now();
+
+    auto future = std::async(std::launch::async, std::move(f));
+    auto status = future.wait_for(milliseconds(300));
+
+    assert(status != std::future_status::deferred);
+
+    if (status == std::future_status::timeout) {
+        std::cout << "function '"
+                  << msg << "' takes too long to execute"
+                  << std::endl;
+
+        future.wait();
+        auto end = steady_clock::now();
+
+        auto diff_ms = duration_cast<milliseconds>(end - start).count();
+
+        std::cout << "     took: " << ((float) diff_ms / 1000)
+                  << " seconds" << std::endl;
+    }
+
+    assert(status == std::future_status::ready);
+
+    return future.get();
+}
+
 namespace gtk {
 
 inline
 GtkWidget* get_nth_child(gint n, GtkContainer* c) {
     GList* children = gtk_container_get_children(c);
-    
+
     auto free_children = defer([children] { g_list_free(children); });
-    
+
     for (auto* l = children; l != NULL; l = l->next) {
         if (n-- == 0) {
             return GTK_WIDGET(l->data);
         }
     }
-    
+
     return nullptr;
 }
 
