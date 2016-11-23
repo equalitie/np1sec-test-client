@@ -52,6 +52,7 @@ public:
     void set_user_public_key(const std::string& username, const PublicKey&);
     void promote_user(const std::string& username);
     User* find_user(const std::string&);
+    const User* find_user(const std::string&) const;
     size_t size() const { return _users.size(); }
     const std::string& my_username() const;
     bool user_in_chat(const std::string&) const;
@@ -339,6 +340,12 @@ void Channel::joined_chat()
 }
 
 User* Channel::find_user(const std::string& user) {
+    auto user_i = _users.find(user);
+    if (user_i == _users.end()) return nullptr;
+    return user_i->second.get();
+}
+
+const User* Channel::find_user(const std::string& user) const {
     auto user_i = _users.find(user);
     if (user_i == _users.end()) return nullptr;
     return user_i->second.get();

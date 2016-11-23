@@ -89,23 +89,12 @@ User::User(Channel& channel, const std::string& name)
     , _authorized_by({name})
     , _view(new ChannelList::User(channel._view))
 {
-    auto gtk_window = channel._room.gtk_window();
-
-    _view->popup_actions["Info"] = [this, gtk_window] {
+    _view->popup_actions["Info"] = [this] {
+        auto gtk_window = _channel._room.gtk_window();
         UserInfoDialog::show(gtk_window, *this);
     };
 
-    auto& room = channel._room;
-
-    if (needs_authorization_from_me()) {
-        auto authorize = [this, &room, name] {
-            room.authorize(name);
-        };
-
-        _view->popup_actions["Authorize"] = authorize;
-        _view->on_double_click = authorize;
-        _view_in_channel.on_double_click = authorize;
-    }
+    update_view();
 }
 
 inline
@@ -121,6 +110,10 @@ bool User::needs_authorization_from_me() const
     if (is_myself()) return false;
 
     auto myname = channel().my_username();
+
+    if (!channel().find_user(myname)) {
+        return false;
+    }
 
     if (!was_promoted_by_me()) {
         if (channel().user_in_chat(myname)) {
@@ -147,6 +140,14 @@ inline void User::update_view()
 
     if (needs_authorization_from_me()) {
         name = "*" + name;
+
+        auto authorize = [this] {
+            _channel._room.authorize(_name);
+        };
+
+        _view->popup_actions["Authorize"] = authorize;
+        _view->on_double_click = authorize;
+        _view_in_channel.on_double_click = authorize;
     }
 
     if (in_chat()) {
