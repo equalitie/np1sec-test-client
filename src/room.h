@@ -128,12 +128,15 @@ Room::Room(PurpleConversation* conv)
     , _room_view(conv, _username)
     , _toolbar(new Toolbar(PIDGIN_CONVERSATION(conv)))
 {
-    _toolbar->create_channel_button->on_click([this] {
+    _toolbar->add_button("Create channel", [this] {
         _room->create_channel();
+        _toolbar->remove_button("Create channel");
+        _toolbar->remove_button("Search channels");
     });
 
-    _toolbar->search_channel_button->on_click([this] {
+    _toolbar->add_button("Search channels", [this] {
         _room->search_channels();
+        _toolbar->remove_button("Search channels");
     });
 }
 
@@ -292,8 +295,6 @@ inline
 np1sec::ChannelInterface*
 Room::new_channel(np1sec::Channel* channel)
 {
-    _toolbar.reset();
-
     inform("Room::new_channel(", size_t(channel),
            ") with participants: ", channel->users());
 

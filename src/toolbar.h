@@ -24,51 +24,51 @@ class Toolbar {
 public:
     struct Button {
     public:
-        void on_click(std::function<void()>);
-
+        ~Button();
     private:
         friend class Toolbar;
 
-        Button(GtkBox*, const char* label);
+        Button(GtkBox*, const char* label, std::function<void()>);
 
+        GtkWidget* _parent_widget;
         GtkWidget* _button_widget;
         std::function<void()> _on_click;
 
         static void on_clicked(GtkWidget*, Button* self);
     };
+
 public:
     Toolbar(PidginConversation*);
 
-    std::unique_ptr<Button> create_channel_button;
-    std::unique_ptr<Button> search_channel_button;
+    void add_button(const std::string&, std::function<void()>);
+    void remove_button(const std::string&);
 
     ~Toolbar();
 
 private:
     PidginConversation* _gtkconv;
     GtkWidget* _toolbar_box;
-    GtkWidget* _create_channel_button;
-    GtkWidget* _search_channel_button;
+    std::map<std::string, std::unique_ptr<Button>> _buttons;
 };
 
 //------------------------------------------------------------------------------
 // Implementation
 //------------------------------------------------------------------------------
-inline Toolbar::Button::Button(GtkBox* box, const char* label)
+inline Toolbar::Button::Button(GtkBox* box, const char* label, std::function<void()> on_click)
+    : _parent_widget(GTK_WIDGET(box))
+    , _on_click(std::move(on_click))
 {
     _button_widget = gtk_button_new_with_label(label);
     gtk_box_pack_start(GTK_BOX(box), _button_widget, FALSE, FALSE, 0);
     gtk_widget_show(_button_widget);
-    gtk_widget_set_sensitive(_button_widget, false);
 
     gtk_signal_connect(GTK_OBJECT(_button_widget), "clicked"
             , GTK_SIGNAL_FUNC(on_clicked), this);
 }
 
-inline void Toolbar::Button::on_click(std::function<void()> f)
+inline Toolbar::Button::~Button()
 {
-    gtk_widget_set_sensitive(_button_widget, bool(f));
-    _on_click = std::move(f);
+    gtk_container_remove(GTK_CONTAINER(_parent_widget), _button_widget);
 }
 
 inline void Toolbar::Button::on_clicked(GtkWidget*, Button* self)
@@ -92,9 +92,17 @@ inline Toolbar::Toolbar(PidginConversation* gtkconv)
 
     gtk_box_pack_start(GTK_BOX(_gtkconv->lower_hbox), _toolbar_box, FALSE, FALSE, 0);
     gtk_widget_show(_toolbar_box);
+}
 
-    create_channel_button.reset(new Button(GTK_BOX(_toolbar_box), "Create channel"));
-    search_channel_button.reset(new Button(GTK_BOX(_toolbar_box), "Search channels"));
+inline void Toolbar::add_button(const std::string& text, std::function<void()> f)
+{
+    auto& b = _buttons[text];
+    b.reset(new Button(GTK_BOX(_toolbar_box), text.c_str(), std::move(f)));
+}
+
+inline void Toolbar::remove_button(const std::string& text)
+{
+    _buttons.erase(text);
 }
 
 inline Toolbar::~Toolbar()
