@@ -30,6 +30,8 @@ public:
 
     std::unique_ptr<Room> room;
 
+    void joined_chat();
+
     ~PluginToggleButton();
 
 private:
@@ -47,6 +49,7 @@ private:
     PurpleConversation* _conv;
     PidginConversation* _gtkconv;
     GtkWidget* _button = nullptr;
+    bool _chat_joined = false;
     bool _toggleable = true;
 };
 
@@ -77,6 +80,15 @@ PluginToggleButton::PluginToggleButton(PurpleConversation* conv)
     gtk_widget_show(_button);
 }
 
+inline void PluginToggleButton::joined_chat()
+{
+    if (_chat_joined) return;
+    _chat_joined = true;
+    if (room) {
+        room->start();
+    }
+}
+
 inline
 void PluginToggleButton::on_click(GtkWidget*, PluginToggleButton* self)
 {
@@ -100,7 +112,10 @@ void PluginToggleButton::on_click(GtkWidget*, PluginToggleButton* self)
 void PluginToggleButton::enable()
 {
     room.reset(new Room(_conv));
-    room->start();
+
+    if (_chat_joined) {
+        room->start();
+    }
 }
 
 inline

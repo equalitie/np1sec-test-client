@@ -78,6 +78,13 @@ extern "C" {
 #define _(x) const_cast<char*>(x)
 
 //------------------------------------------------------------------------------
+static void chat_joined_cb(PurpleConversation* conv, void*)
+{
+    auto b = get_toggle_button(conv);
+    assert(b);
+    b->joined_chat();
+}
+
 static void conversation_created_cb(PurpleConversation *conv)
 {
     if (!is_chat(conv)) return;
@@ -150,6 +157,7 @@ static void setup_purple_callbacks(PurplePlugin* plugin)
 
 	purple_signal_connect(conv_handle, "chat-buddy-left", plugin, PURPLE_CALLBACK(chat_buddy_left_cb), NULL);
     purple_signal_connect(conv_handle, "conversation-created", plugin, PURPLE_CALLBACK(conversation_created_cb), NULL);
+	purple_signal_connect(conv_handle, "chat-joined", plugin, PURPLE_CALLBACK(chat_joined_cb), NULL);
     purple_signal_connect(conv_handle, "deleting-conversation", plugin, PURPLE_CALLBACK(deleting_conversation_cb), NULL);
     purple_signal_connect(conv_handle, "receiving-chat-msg", plugin, PURPLE_CALLBACK(receiving_chat_msg_cb), NULL);
     purple_signal_connect(conv_handle, "sending-chat-msg", plugin, PURPLE_CALLBACK(sending_chat_msg_cb), NULL);
@@ -164,6 +172,7 @@ static void disconnect_purple_callbacks(PurplePlugin* plugin)
 
 	purple_signal_disconnect(conv_handle, "chat-buddy-left", plugin, PURPLE_CALLBACK(chat_buddy_left_cb));
     purple_signal_disconnect(conv_handle, "conversation-created", plugin, PURPLE_CALLBACK(conversation_created_cb));
+	purple_signal_disconnect(conv_handle, "chat-joined", plugin, PURPLE_CALLBACK(chat_joined_cb));
     purple_signal_disconnect(conv_handle, "deleting-conversation", plugin, PURPLE_CALLBACK(deleting_conversation_cb));
     purple_signal_disconnect(conv_handle, "receiving-chat-msg", plugin, PURPLE_CALLBACK(receiving_chat_msg_cb));
     purple_signal_disconnect(conv_handle, "sending-chat-msg", plugin, PURPLE_CALLBACK(sending_chat_msg_cb));

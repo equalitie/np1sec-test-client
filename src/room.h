@@ -131,12 +131,6 @@ Room::Room(PurpleConversation* conv)
     _toolbar->add_button("Create channel", [this] {
         _room->create_channel();
         _toolbar->remove_button("Create channel");
-        _toolbar->remove_button("Search channels");
-    });
-
-    _toolbar->add_button("Search channels", [this] {
-        _room->search_channels();
-        _toolbar->remove_button("Search channels");
     });
 }
 
@@ -146,6 +140,8 @@ void Room::start()
     if (started()) return;
 
     _room.reset(new Np1SecRoom(this, _username, _private_key));
+
+    _room->search_channels();
 }
 
 inline
