@@ -38,7 +38,10 @@ private:
     void enable();
     void disable();
 
-    std::string prefs_str();
+    std::string prefs_str() const;
+
+    bool prefs_get_enabled() const;
+    void prefs_set_enabled(bool) const;
 
 private:
     PurpleConversation* _conv;
@@ -56,24 +59,10 @@ PluginToggleButton::PluginToggleButton(PurpleConversation* conv)
     , _gtkconv(PIDGIN_CONVERSATION(conv))
 {
     if (_toggleable) {
-        if (! purple_prefs_exists("/np1sec")) {
-            purple_prefs_add_none("/np1sec");
-        }
-
-        if (! purple_prefs_exists("/np1sec/conversation/")) {
-            purple_prefs_add_none("/np1sec/conversation");
-        }
-
-        auto s = std::string("/np1sec/conversation/") + _conv->name;
-
-        if (! purple_prefs_exists(s.c_str())) {
-            purple_prefs_add_none(s.c_str());
-        }
-
         _button = gtk_button_new_with_label("Toggle np1sec");
         gtk_box_pack_start(GTK_BOX(_gtkconv->infopane_hbox), _button, FALSE, FALSE, 0);
 
-	    if (purple_prefs_get_bool(prefs_str().c_str())) {
+	    if (prefs_get_enabled()) {
             enable();
         }
     }
@@ -93,11 +82,11 @@ void PluginToggleButton::on_click(GtkWidget*, PluginToggleButton* self)
 {
     if (self->_toggleable) {
         if (self->room) {
-            purple_prefs_set_bool(self->prefs_str().c_str(), false);
+            self->prefs_set_enabled(false);
             self->disable();
         }
         else {
-            purple_prefs_set_bool(self->prefs_str().c_str(), true);
+            self->prefs_set_enabled(true);
             self->enable();
         }
     }
@@ -106,11 +95,6 @@ void PluginToggleButton::on_click(GtkWidget*, PluginToggleButton* self)
         self->_button = nullptr;
         self->enable();
     }
-}
-
-inline
-std::string PluginToggleButton::prefs_str() {
-    return std::string("/np1sec/conversation/") + _conv->name + "/enabled";
 }
 
 void PluginToggleButton::enable()
@@ -123,6 +107,35 @@ inline
 void PluginToggleButton::disable()
 {
     room.reset();
+}
+
+inline
+std::string PluginToggleButton::prefs_str() const {
+    return std::string("/np1sec/conversation/") + _conv->name + "/enabled";
+}
+
+bool PluginToggleButton::prefs_get_enabled() const
+{
+    return purple_prefs_get_bool(prefs_str().c_str());
+}
+
+void PluginToggleButton::prefs_set_enabled(bool value) const
+{
+    if (!purple_prefs_exists("/np1sec")) {
+        purple_prefs_add_none("/np1sec");
+    }
+
+    if (!purple_prefs_exists("/np1sec/conversation/")) {
+        purple_prefs_add_none("/np1sec/conversation");
+    }
+
+    auto s = std::string("/np1sec/conversation/") + _conv->name;
+
+    if (! purple_prefs_exists(s.c_str())) {
+        purple_prefs_add_none(s.c_str());
+    }
+
+    purple_prefs_set_bool(prefs_str().c_str(), value);
 }
 
 inline
