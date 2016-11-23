@@ -50,8 +50,7 @@ static bool is_chat(PurpleConversation* conv) {
 //------------------------------------------------------------------------------
 static ToggleButton* get_toggle_button(PurpleAccount* account)
 {
-    auto* p =  g_hash_table_lookup(account->ui_settings, "np1sec_plugin");
-    return static_cast<ToggleButton*>(p);
+    return static_cast<ToggleButton*>(account->ui_data);
 }
 
 static ToggleButton* get_toggle_button(PurpleConversation* conv)
@@ -64,7 +63,7 @@ static void set_toggle_button(PurpleAccount* account, ToggleButton* tb)
     if (auto r = get_toggle_button(account)) {
         delete r;
     }
-    g_hash_table_insert(account->ui_settings, strdup("np1sec_plugin"), tb);
+    account->ui_data = tb;
 }
 
 static void set_toggle_button(PurpleConversation* conv, ToggleButton* tb)
@@ -184,6 +183,10 @@ gboolean np1sec_plugin_load(PurplePlugin* plugin)
 		PurpleConversation *conv = (PurpleConversation *)convs->data;
 
         if (is_chat(conv) && !get_toggle_button(conv)) {
+            /* We'll make use of this variable, so make sure pidgin
+             * isn't using it for some other purpose. */
+            assert(!conv->account->ui_data);
+
             auto* tb = new ToggleButton(conv);
             set_toggle_button(conv, tb);
         }
