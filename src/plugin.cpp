@@ -48,27 +48,18 @@ static bool is_chat(PurpleConversation* conv) {
 }
 
 //------------------------------------------------------------------------------
-static ToggleButton* get_toggle_button(PurpleAccount* account)
-{
-    return static_cast<ToggleButton*>(account->ui_data);
-}
-
 static ToggleButton* get_toggle_button(PurpleConversation* conv)
 {
-    return get_toggle_button(conv->account);
-}
-
-static void set_toggle_button(PurpleAccount* account, ToggleButton* tb)
-{
-    if (auto r = get_toggle_button(account)) {
-        delete r;
-    }
-    account->ui_data = tb;
+    auto p = purple_conversation_get_data(conv, "np1sec");
+    return reinterpret_cast<ToggleButton*>(p);
 }
 
 static void set_toggle_button(PurpleConversation* conv, ToggleButton* tb)
 {
-    set_toggle_button(conv->account, tb);
+    if (auto r = get_toggle_button(conv)) {
+        delete r;
+    }
+    purple_conversation_set_data(conv, "np1sec", tb);
 }
 
 //------------------------------------------------------------------------------
@@ -83,19 +74,6 @@ static void chat_joined_cb(PurpleConversation* conv, void*)
     auto b = get_toggle_button(conv);
     assert(b);
     b->joined_chat();
-}
-
-static void conversation_created_cb(PurpleConversation *conv)
-{
-    if (!is_chat(conv)) return;
-
-    auto* tb = new ToggleButton(conv);
-    set_toggle_button(conv, tb);
-}
-
-static void deleting_conversation_cb(PurpleConversation *conv) {
-    if (!is_chat(conv)) return;
-    set_toggle_button(conv, nullptr);
 }
 
 static gboolean receiving_chat_msg_cb(PurpleAccount *account,
@@ -123,8 +101,10 @@ static gboolean receiving_chat_msg_cb(PurpleAccount *account,
 }
 
 static
-void sending_chat_msg_cb(PurpleAccount *account, char **message, int id) {
-    auto tb = get_toggle_button(account);
+void sending_chat_msg_cb(PurpleAccount *account, char **message, int id, PurpleConversation* conv) {
+    assert(conv);
+
+    auto tb = get_toggle_button(conv);
     assert(tb);
 
     if (!tb->room) return;
@@ -146,36 +126,62 @@ void chat_buddy_left_cb(PurpleConversation* conv, const char* name, const char*,
 }
 
 //------------------------------------------------------------------------------
-bool g_signals_connected = false;
-
-static void setup_purple_callbacks(PurplePlugin* plugin)
+static void apply_np1sec(PurpleConversation* conv)
 {
-    if (g_signals_connected) return;
-    g_signals_connected = true;
+    assert(is_chat(conv));
+    assert(!get_toggle_button(conv));
 
     void* conv_handle = purple_conversations_get_handle();
 
-	purple_signal_connect(conv_handle, "chat-buddy-left", plugin, PURPLE_CALLBACK(chat_buddy_left_cb), NULL);
+	purple_signal_connect(conv_handle, "chat-buddy-left", conv, PURPLE_CALLBACK(chat_buddy_left_cb), NULL);
+	purple_signal_connect(conv_handle, "chat-joined", conv, PURPLE_CALLBACK(chat_joined_cb), NULL);
+    purple_signal_connect(conv_handle, "receiving-chat-msg", conv, PURPLE_CALLBACK(receiving_chat_msg_cb), NULL);
+    purple_signal_connect(conv_handle, "sending-chat-msg", conv, PURPLE_CALLBACK(sending_chat_msg_cb), conv);
+
+    set_toggle_button(conv, new ToggleButton(conv));
+}
+
+static void unapply_np1sec(PurpleConversation* conv)
+{
+    assert(is_chat(conv));
+    assert(get_toggle_button(conv));
+
+    void* conv_handle = purple_conversations_get_handle();
+
+	purple_signal_disconnect(conv_handle, "chat-buddy-left", conv, PURPLE_CALLBACK(chat_buddy_left_cb));
+	purple_signal_disconnect(conv_handle, "chat-joined", conv, PURPLE_CALLBACK(chat_joined_cb));
+    purple_signal_disconnect(conv_handle, "receiving-chat-msg", conv, PURPLE_CALLBACK(receiving_chat_msg_cb));
+    purple_signal_disconnect(conv_handle, "sending-chat-msg", conv, PURPLE_CALLBACK(sending_chat_msg_cb));
+
+    set_toggle_button(conv, nullptr);
+}
+
+//------------------------------------------------------------------------------
+static void conversation_created_cb(PurpleConversation *conv)
+{
+    if (!is_chat(conv)) return;
+    apply_np1sec(conv);
+}
+
+static void deleting_conversation_cb(PurpleConversation *conv) {
+    if (!is_chat(conv)) return;
+    unapply_np1sec(conv);
+}
+
+static void setup_purple_callbacks(PurplePlugin* plugin)
+{
+    void* conv_handle = purple_conversations_get_handle();
+
     purple_signal_connect(conv_handle, "conversation-created", plugin, PURPLE_CALLBACK(conversation_created_cb), NULL);
-	purple_signal_connect(conv_handle, "chat-joined", plugin, PURPLE_CALLBACK(chat_joined_cb), NULL);
     purple_signal_connect(conv_handle, "deleting-conversation", plugin, PURPLE_CALLBACK(deleting_conversation_cb), NULL);
-    purple_signal_connect(conv_handle, "receiving-chat-msg", plugin, PURPLE_CALLBACK(receiving_chat_msg_cb), NULL);
-    purple_signal_connect(conv_handle, "sending-chat-msg", plugin, PURPLE_CALLBACK(sending_chat_msg_cb), NULL);
 }
 
 static void disconnect_purple_callbacks(PurplePlugin* plugin)
 {
-    if (!g_signals_connected) return;
-    g_signals_connected = false;
-
     void* conv_handle = purple_conversations_get_handle();
 
-	purple_signal_disconnect(conv_handle, "chat-buddy-left", plugin, PURPLE_CALLBACK(chat_buddy_left_cb));
     purple_signal_disconnect(conv_handle, "conversation-created", plugin, PURPLE_CALLBACK(conversation_created_cb));
-	purple_signal_disconnect(conv_handle, "chat-joined", plugin, PURPLE_CALLBACK(chat_joined_cb));
     purple_signal_disconnect(conv_handle, "deleting-conversation", plugin, PURPLE_CALLBACK(deleting_conversation_cb));
-    purple_signal_disconnect(conv_handle, "receiving-chat-msg", plugin, PURPLE_CALLBACK(receiving_chat_msg_cb));
-    purple_signal_disconnect(conv_handle, "sending-chat-msg", plugin, PURPLE_CALLBACK(sending_chat_msg_cb));
 }
 
 gboolean np1sec_plugin_load(PurplePlugin* plugin)
@@ -195,9 +201,7 @@ gboolean np1sec_plugin_load(PurplePlugin* plugin)
             /* We'll make use of this variable, so make sure pidgin
              * isn't using it for some other purpose. */
             assert(!conv->account->ui_data);
-
-            auto* tb = new ToggleButton(conv);
-            set_toggle_button(conv, tb);
+            apply_np1sec(conv);
         }
 
 		convs = convs->next;
@@ -216,9 +220,9 @@ gboolean np1sec_plugin_unload(PurplePlugin* plugin)
 
 		PurpleConversation *conv = (PurpleConversation *)convs->data;
 
-        if (!is_chat(conv)) continue;
-
-        set_toggle_button(conv, nullptr);
+        if (is_chat(conv)) {
+            unapply_np1sec(conv);
+        }
 
 		convs = convs->next;
 	}
@@ -263,7 +267,7 @@ static PurplePluginInfo info =
 static void
 __init_plugin(PurplePlugin *plugin)
 {
-    info.name        = _("(n+1)sec Secure messaging");
+    info.name        = _("(n+1)sec Secure Messaging");
     info.summary     = _("Provides private and secure conversations for multi-user chats");
     info.description = _("Preserves the privacy of IM communications "
              "by providing encryption, authentication, "
