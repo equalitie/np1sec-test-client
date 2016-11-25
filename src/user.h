@@ -107,24 +107,30 @@ void User::bind_user_list(UserList& user_list)
 inline
 bool User::needs_authorization_from_me() const
 {
+    std::cout << _channel.my_username() << " --- 1" << std::endl;
     if (is_myself()) return false;
 
     auto myname = channel().my_username();
 
     if (!channel().find_user(myname)) {
+        std::cout << _channel.my_username() << " --- 2" << std::endl;
         return false;
     }
 
     if (!was_promoted_by_me()) {
+        std::cout << _channel.my_username() << " --- 3" << std::endl;
         if (channel().user_in_chat(myname)) {
+            std::cout << _channel.my_username() << " --- 4" << std::endl;
             return true;
         }
         else {
             if (is_authorized()) {
+                std::cout << _channel.my_username() << " --- 5" << std::endl;
                 return true;
             }
         }
     }
+    std::cout << _channel.my_username() << " --- 6" << std::endl;
 
     return false;
 }
@@ -138,6 +144,7 @@ inline void User::update_view()
 {
     auto name = _name;
 
+    std::cout << _channel.my_username() << " update_view " << name << std::endl;
     if (needs_authorization_from_me()) {
         name = "*" + name;
 

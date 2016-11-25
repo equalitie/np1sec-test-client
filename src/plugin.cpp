@@ -40,6 +40,7 @@
 
 /* Plugin headers */
 #include "plugin_toggle_button.h"
+#include "global_signals.h"
 
 using ToggleButton = np1sec_plugin::PluginToggleButton;
 
@@ -157,31 +158,26 @@ static void unapply_np1sec(PurpleConversation* conv)
 }
 
 //------------------------------------------------------------------------------
-static void conversation_created_cb(PurpleConversation *conv)
-{
-    if (!is_chat(conv)) return;
-    apply_np1sec(conv);
-}
-
-static void deleting_conversation_cb(PurpleConversation *conv) {
-    if (!is_chat(conv)) return;
-    unapply_np1sec(conv);
-}
+static ::np1sec_plugin::GlobalSignals* signals;
 
 static void setup_purple_callbacks(PurplePlugin* plugin)
 {
-    void* conv_handle = purple_conversations_get_handle();
+    signals = new ::np1sec_plugin::GlobalSignals();
 
-    purple_signal_connect(conv_handle, "conversation-created", plugin, PURPLE_CALLBACK(conversation_created_cb), NULL);
-    purple_signal_connect(conv_handle, "deleting-conversation", plugin, PURPLE_CALLBACK(deleting_conversation_cb), NULL);
+    signals->on_conversation_created = [](PurpleConversation* conv) {
+        if (!is_chat(conv)) return;
+        apply_np1sec(conv);
+    };
+
+    signals->on_conversation_deleted = [](PurpleConversation* conv) {
+        if (!is_chat(conv)) return;
+        unapply_np1sec(conv);
+    };
 }
 
 static void disconnect_purple_callbacks(PurplePlugin* plugin)
 {
-    void* conv_handle = purple_conversations_get_handle();
-
-    purple_signal_disconnect(conv_handle, "conversation-created", plugin, PURPLE_CALLBACK(conversation_created_cb));
-    purple_signal_disconnect(conv_handle, "deleting-conversation", plugin, PURPLE_CALLBACK(deleting_conversation_cb));
+    delete signals;
 }
 
 gboolean np1sec_plugin_load(PurplePlugin* plugin)

@@ -32,6 +32,7 @@ namespace np1sec_plugin {
 class Room;
 class User;
 class ChannelPage;
+class ChannelView;
 
 class Channel final : public np1sec::ChannelInterface {
     using PublicKey = np1sec::PublicKey;
@@ -128,7 +129,7 @@ private:
     std::map<std::string, std::unique_ptr<User>> _users;
 
     // Is non null iff we've joined the channel.
-    std::unique_ptr<ChannelPage> _channel_page;
+    std::unique_ptr<ChannelView> _channel_page;
 };
 
 } // np1sec_plugin namespace
@@ -136,7 +137,7 @@ private:
 /* plugin headers */
 #include "room.h"
 #include "user.h"
-#include "channel_page.h"
+#include "channel_view.h"
 
 namespace np1sec_plugin {
 
@@ -174,8 +175,7 @@ inline std::string Channel::channel_name() const
 
 inline void Channel::mark_as_joined()
 {
-    _channel_page.reset(new ChannelPage(_room._room_view, *this));
-    _channel_page->set_current();
+    _channel_page.reset(new ChannelView(_room._room_view, *this));
 
     for (auto& user : _users | boost::adaptors::map_values) {
         user->bind_user_list(_channel_page->user_list());
@@ -220,6 +220,7 @@ void Channel::set_user_public_key(const std::string& username, const PublicKey& 
 
 inline User& Channel::add_member(const std::string& username)
 {
+    std::cout << my_username() << " channel::add_member " << username << std::endl;
     assert(_users.count(username) == 0);
 
     auto u = new User(*this, username);
