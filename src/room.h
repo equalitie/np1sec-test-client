@@ -164,11 +164,11 @@ void Room::send_chat_message(const std::string& message)
 
     auto* u = find_user_in_channel(_username);
 
-    //auto page = _room_view.current_channel_page();
+    auto channel = _room_view.focused_channel();
 
-    //if (!page) {
-    //    return inform("Plain text messages are not yet supported");
-    //}
+    if (!channel) {
+        return inform("Plain text messages are not yet supported");
+    }
 
     if (!u || !u->in_chat()) {
         // TODO: This should be displayed in the 'page'.

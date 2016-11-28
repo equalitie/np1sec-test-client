@@ -31,14 +31,29 @@ class RoomView;
 class ChannelView {
 public:
     ChannelView(RoomView&, Channel&);
-
-    void set_current();
+    ~ChannelView();
 
     void display(const std::string& username, const std::string& message);
 
     UserList& user_list() { return _user_list; }
 
 private:
+    static gboolean
+    entry_focus_cb(GtkWidget*, GdkEventFocus*, ChannelView* self)
+    {
+        self->_room_view.set_channel_focus(self);
+        return false;
+    }
+
+    static gboolean
+    entry_nofocus_cb(GtkWidget*, GdkEventFocus*, ChannelView* self)
+    {
+        self->_room_view.set_channel_focus(nullptr);
+        return false;
+    }
+
+private:
+    RoomView& _room_view;
     PurpleConversation* _conv;
     PidginConversation* _gtkconv;
 
@@ -56,10 +71,11 @@ namespace np1sec_plugin {
 //------------------------------------------------------------------------------
 inline
 ChannelView::ChannelView(RoomView& room_view, Channel& channel)
+    : _room_view(room_view)
 {
     auto conv = room_view.purple_conv();
 
-    auto channel_name = channel.channel_name();
+    auto channel_name = room_view.room_name() + ":" + channel.channel_name();
 
     // We don't want the on_conversation_created signal to create the default
     // np1sec layout on this conversation. So disable it temporarily.
@@ -72,11 +88,16 @@ ChannelView::ChannelView(RoomView& room_view, Channel& channel)
         GlobalSignals::instance().on_conversation_created = std::move(f);
     }
 
-    int id = purple_conv_chat_get_id(PURPLE_CONV_CHAT(conv));
-    purple_conv_chat_set_id(PURPLE_CONV_CHAT(_conv), id);
-
+    //int id = purple_conv_chat_get_id(PURPLE_CONV_CHAT(conv));
+    //purple_conv_chat_set_id(PURPLE_CONV_CHAT(_conv), id);
 
     _gtkconv = PIDGIN_CONVERSATION(_conv);
+
+    g_signal_connect(G_OBJECT(_gtkconv->entry), "focus-in-event",
+                     G_CALLBACK(entry_focus_cb), this);
+    g_signal_connect(G_OBJECT(_gtkconv->entry), "focus-out-event",
+                     G_CALLBACK(entry_nofocus_cb), this);
+
     auto content = gtk_widget_get_parent(_gtkconv->lower_hbox);
 
     const gint output_window_position = 2;
@@ -98,6 +119,15 @@ ChannelView::ChannelView(RoomView& room_view, Channel& channel)
 
     // TODO: Not sure why the value of 1 gives a good result
     gtk_widget_set_size_request(_user_list.root_widget(), 1, -1);
+}
+
+inline
+ChannelView::~ChannelView()
+{
+    // TODO: Is this necessary?
+    if (_room_view.focused_channel() == this) {
+        _room_view.set_channel_focus(nullptr);
+    }
 }
 
 inline

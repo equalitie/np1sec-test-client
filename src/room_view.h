@@ -25,6 +25,7 @@
 namespace np1sec_plugin {
 
 class ChannelList;
+class ChannelView;
 
 class RoomView {
 public:
@@ -40,6 +41,10 @@ public:
 
     PurpleConversation* purple_conv() { return _conv; }
 
+    void set_channel_focus(ChannelView*);
+    ChannelView* focused_channel() const;
+    std::string room_name() const;
+
 private:
     const std::string _username;
 
@@ -50,6 +55,8 @@ private:
 
     GtkWidget* _content;
     GtkWidget* _parent;
+
+    ChannelView* _focused_channel_conv = nullptr;
 
     /*
      * This is a pointer to the widget that holds the output
@@ -133,6 +140,24 @@ inline RoomView::RoomView(PurpleConversation* conv, const std::string& username)
     // TODO: Not sure why the value of 1 gives a good result
     gtk_widget_set_size_request(_vpaned, 1, -1);
     gtk_widget_show(_vpaned);
+}
+
+inline
+std::string RoomView::room_name() const
+{
+    return _conv->title;
+}
+
+inline
+ChannelView* RoomView::focused_channel() const
+{
+    return _focused_channel_conv;
+}
+
+inline
+void RoomView::set_channel_focus(ChannelView* cv)
+{
+    _focused_channel_conv = cv;
 }
 
 inline

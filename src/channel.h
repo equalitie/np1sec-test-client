@@ -220,7 +220,6 @@ void Channel::set_user_public_key(const std::string& username, const PublicKey& 
 
 inline User& Channel::add_member(const std::string& username)
 {
-    std::cout << my_username() << " channel::add_member " << username << std::endl;
     assert(_users.count(username) == 0);
 
     auto u = new User(*this, username);
