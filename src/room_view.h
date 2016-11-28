@@ -19,7 +19,6 @@
 #pragma once
 
 #include "defer.h"
-#include "notebook.h"
 
 #include <pidgin/gtkimhtml.h>
 
