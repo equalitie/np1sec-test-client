@@ -39,39 +39,39 @@
 #include <pidgin/gtkconv.h>
 
 /* Plugin headers */
-#include "plugin_toggle_button.h"
+#include "room.h"
 #include "global_signals.h"
 
-using ToggleButton = np1sec_plugin::PluginToggleButton;
+using Room = np1sec_plugin::Room;
 
 static bool is_chat(PurpleConversation* conv) {
     return conv && conv->type == PURPLE_CONV_TYPE_CHAT;
 }
 
 //------------------------------------------------------------------------------
-static ToggleButton* get_toggle_button(PurpleAccount* account)
+static Room* get_room(PurpleAccount* account)
 {
-    return reinterpret_cast<ToggleButton*>(account->ui_data);
+    return reinterpret_cast<Room*>(account->ui_data);
 }
 
-static void set_toggle_button(PurpleAccount* account, ToggleButton* tb)
+static void set_room(PurpleAccount* account, Room* room)
 {
-    if (auto r = get_toggle_button(account)) {
+    if (auto r = get_room(account)) {
         delete r;
     }
-    account->ui_data = tb;
+    account->ui_data = room;
 }
 
-static ToggleButton* get_toggle_button(PurpleConversation* conv)
+static Room* get_room(PurpleConversation* conv)
 {
     auto account = purple_conversation_get_account(conv);
-    return get_toggle_button(account);
+    return get_room(account);
 }
 
-static void set_toggle_button(PurpleConversation* conv, ToggleButton* tb)
+static void set_room(PurpleConversation* conv, Room* room)
 {
     auto account = purple_conversation_get_account(conv);
-    set_toggle_button(account, tb);
+    set_room(account, room);
 }
 
 //------------------------------------------------------------------------------
@@ -83,9 +83,9 @@ extern "C" {
 //------------------------------------------------------------------------------
 static void chat_joined_cb(PurpleConversation* conv, void*)
 {
-    auto b = get_toggle_button(conv);
-    assert(b);
-    b->joined_chat();
+    auto room = get_room(conv);
+    assert(room);
+    room->start();
 }
 
 static gboolean receiving_chat_msg_cb(PurpleAccount *account,
@@ -96,11 +96,9 @@ static gboolean receiving_chat_msg_cb(PurpleAccount *account,
 {
     if (!is_chat(conv)) return FALSE;
 
-    auto tb = get_toggle_button(conv);
-    assert(tb);
-    if (!tb) return FALSE;
-
-    if (!tb->room) return FALSE;
+    auto room = get_room(conv);
+    assert(room);
+    if (!room) return FALSE;
 
     static const std::string np1sec_header = ":o3np1sec0:";
 
@@ -111,7 +109,7 @@ static gboolean receiving_chat_msg_cb(PurpleAccount *account,
     // Ignore historic messages.
     if (*flags & PURPLE_MESSAGE_DELAYED) return TRUE;
 
-    tb->room->on_received_data(*sender, *message);
+    room->on_received_data(*sender, *message);
 
     // Returning TRUE causes this message not to be displayed.
     // Displaying is done explicitly from np1sec.
@@ -120,12 +118,11 @@ static gboolean receiving_chat_msg_cb(PurpleAccount *account,
 
 static
 void sending_chat_msg_cb(PurpleAccount *account, char **message, int id, void*) {
-    auto tb = get_toggle_button(account);
+    auto room = get_room(account);
 
-    if (!tb) return;
-    if (!tb->room) return;
+    if (!room) return;
 
-    tb->room->send_chat_message(*message);
+    room->send_chat_message(*message);
 
     g_free(*message);
     *message = NULL;
@@ -136,24 +133,24 @@ void chat_buddy_left_cb(PurpleConversation* conv, const char* name, const char*,
 {
     if (!is_chat(conv)) return;
 
-    auto tb = get_toggle_button(conv);
-    assert(tb);
-    if (tb && tb->room) tb->room->user_left(name);
+    auto room = get_room(conv);
+    assert(room);
+    if (room) room->user_left(name);
 }
 
 //------------------------------------------------------------------------------
 static void apply_np1sec(PurpleConversation* conv)
 {
     assert(is_chat(conv));
-    assert(!get_toggle_button(conv));
-    set_toggle_button(conv, new ToggleButton(conv));
+    assert(!get_room(conv));
+    set_room(conv, new Room(conv));
 }
 
 static void unapply_np1sec(PurpleConversation* conv)
 {
     assert(is_chat(conv));
-    if (!get_toggle_button(conv)) return;
-    set_toggle_button(conv, nullptr);
+    if (!get_room(conv)) return;
+    set_room(conv, nullptr);
 }
 
 //------------------------------------------------------------------------------
@@ -208,7 +205,7 @@ gboolean np1sec_plugin_load(PurplePlugin* plugin)
 
 		PurpleConversation *conv = (PurpleConversation *)convs->data;
 
-        if (is_chat(conv) && !get_toggle_button(conv)) {
+        if (is_chat(conv) && !get_room(conv)) {
             /* We'll make use of this variable, so make sure pidgin
              * isn't using it for some other purpose. */
             assert(!conv->account->ui_data);
