@@ -31,6 +31,9 @@ public:
     std::function<void(PurpleConversation*)> on_conversation_deleted;
 
 private:
+    static GlobalSignals* get();
+    static void set(GlobalSignals*);
+
     static GlobalSignals** ptrptr();
 
     static void conversation_created_cb(PurpleConversation *conv, GlobalSignals*);
@@ -39,8 +42,8 @@ private:
 
 inline GlobalSignals::GlobalSignals()
 {
-    assert(!*ptrptr());
-    *ptrptr() = this;
+    assert(!get());
+    set(this);
 
     void* conv_handle = purple_conversations_get_handle();
     purple_signal_connect(conv_handle, "conversation-created", this, PURPLE_CALLBACK(conversation_created_cb), this);
@@ -52,6 +55,7 @@ inline GlobalSignals::~GlobalSignals()
     void* conv_handle = purple_conversations_get_handle();
     purple_signal_disconnect(conv_handle, "conversation-created", this, PURPLE_CALLBACK(conversation_created_cb));
     purple_signal_disconnect(conv_handle, "deleting-conversation", this, PURPLE_CALLBACK(deleting_conversation_cb));
+    set(nullptr);
 }
 
 inline void GlobalSignals::conversation_created_cb(PurpleConversation *conv, GlobalSignals* self)
@@ -68,6 +72,16 @@ inline void GlobalSignals::deleting_conversation_cb(PurpleConversation *conv, Gl
         auto f = self->on_conversation_deleted;
         f(conv);
     }
+}
+
+inline GlobalSignals* GlobalSignals::get()
+{
+    return *ptrptr();
+}
+
+inline void GlobalSignals::set(GlobalSignals* p)
+{
+    *ptrptr() = p;
 }
 
 inline GlobalSignals** GlobalSignals::ptrptr()
