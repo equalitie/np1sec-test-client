@@ -121,6 +121,7 @@ private:
 
 private:
     friend class User;
+    friend class ChannelView;
 
     np1sec::Channel* _delegate;
 
@@ -161,7 +162,7 @@ inline Channel::Channel(np1sec::Channel* delegate, Room& room)
          * library.
          */
         if (_room.find_user_in_channel(_room.username())) {
-            inform("Already in a channel");
+            inform("Already in a channel ", _channel_page.get());
             return;
         }
         _room.join_channel(_delegate);

@@ -54,6 +54,7 @@ private:
 
 private:
     RoomView& _room_view;
+    Channel& _channel;
     PurpleConversation* _conv;
     PidginConversation* _gtkconv;
 
@@ -84,6 +85,7 @@ inline void set_channel_view(PurpleConversation* conv, ChannelView* cv) {
 inline
 ChannelView::ChannelView(RoomView& room_view, Channel& channel)
     : _room_view(room_view)
+    , _channel(channel)
 {
     auto conv = room_view.purple_conv();
 
@@ -139,6 +141,7 @@ inline
 ChannelView::~ChannelView()
 {
     set_channel_view(_conv, nullptr);
+    _channel._channel_page.reset();
 
     // TODO: Is this necessary?
     if (_room_view.focused_channel() == this) {
