@@ -90,7 +90,7 @@ static void chat_joined_cb(PurpleConversation* conv, void*)
 
 static gboolean receiving_chat_msg_cb(PurpleAccount *account,
                                       char** sender,
-                                      char **message,
+                                      char** message,
                                       PurpleConversation* conv,
                                       PurpleMessageFlags *flags)
 {
@@ -101,6 +101,12 @@ static gboolean receiving_chat_msg_cb(PurpleAccount *account,
     if (!tb) return FALSE;
 
     if (!tb->room) return FALSE;
+
+    static const std::string np1sec_header = ":o3np1sec0:";
+
+    if (std::string(*message).substr(0, np1sec_header.size()) != np1sec_header) {
+        return FALSE;
+    }
 
     // Ignore historic messages.
     if (*flags & PURPLE_MESSAGE_DELAYED) return TRUE;

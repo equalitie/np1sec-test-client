@@ -167,7 +167,11 @@ void Room::send_chat_message(const std::string& message)
     auto channel = _room_view.focused_channel();
 
     if (!channel) {
-        return inform("Plain text messages are not yet supported");
+        /*
+         * We're sending from the main room (not a channel).
+         * So send as plain text
+         */
+        return send_message(message);
     }
 
     if (!u || !u->in_chat()) {
