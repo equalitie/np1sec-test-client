@@ -150,7 +150,12 @@ static void unapply_np1sec(PurpleConversation* conv)
 {
     assert(is_chat(conv));
     if (!get_room(conv)) return;
-    set_room(conv, nullptr);
+
+    /* Only destroy the np1sec room if this conversation doesn't
+     * represent a channel. */
+    if (!np1sec_plugin::get_channel_view(conv)) {
+        set_room(conv, nullptr);
+    }
 }
 
 //------------------------------------------------------------------------------

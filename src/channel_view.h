@@ -69,6 +69,18 @@ namespace np1sec_plugin {
 //------------------------------------------------------------------------------
 // Implementation
 //------------------------------------------------------------------------------
+inline ChannelView* get_channel_view(PurpleConversation* conv) {
+    auto p = purple_conversation_get_data(conv, "np1sec_channel_view");
+    return reinterpret_cast<ChannelView*>(p);
+}
+
+inline void set_channel_view(PurpleConversation* conv, ChannelView* cv) {
+    if (auto p = get_channel_view(conv)) {
+        delete p;
+    }
+    purple_conversation_set_data(conv, "np1sec_channel_view", cv);
+}
+
 inline
 ChannelView::ChannelView(RoomView& room_view, Channel& channel)
     : _room_view(room_view)
@@ -119,11 +131,15 @@ ChannelView::ChannelView(RoomView& room_view, Channel& channel)
 
     // TODO: Not sure why the value of 1 gives a good result
     gtk_widget_set_size_request(_user_list.root_widget(), 1, -1);
+
+    set_channel_view(_conv, this);
 }
 
 inline
 ChannelView::~ChannelView()
 {
+    set_channel_view(_conv, nullptr);
+
     // TODO: Is this necessary?
     if (_room_view.focused_channel() == this) {
         _room_view.set_channel_focus(nullptr);
