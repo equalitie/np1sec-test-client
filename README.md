@@ -28,6 +28,15 @@ pidgin-2.11, the np1sec library and this plugin. To run it, invoke
 On success, the script shall start pidgin where you can go to
 Tools > Plugins and enable the `(n+1)sec Secure messaging` plugin.
 
+Subsequent pidgin executions can be done by executing the same command
+again. Note however, note that executing it shall update the np1sec and
+np1sec-test-client projects to their latest versions. To avoid that
+one may instead execute
+
+```
+./bin/bin/pidgin --config=pidgin-home
+```
+
 # Setup for developers
 
 For developers it is better to use a custom built pidgin. This is because
@@ -35,7 +44,7 @@ it can be built with the minimum functionality it needs to work and
 thus causes less problems when (e.g.) multiple instances of the messenger
 need to run on the same machine.
 
-## Buld pidgin
+## Build pidgin
 
 Download and extract pidgin source from [here](https://www.pidgin.im/download/source/).
 Then:
