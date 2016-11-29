@@ -115,8 +115,8 @@ static gboolean receiving_chat_msg_cb(PurpleAccount *account,
 static
 void sending_chat_msg_cb(PurpleAccount *account, char **message, int id, void*) {
     auto tb = get_toggle_button(account);
-    assert(tb);
 
+    if (!tb) return;
     if (!tb->room) return;
 
     tb->room->send_chat_message(*message);
