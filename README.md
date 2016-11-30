@@ -29,7 +29,7 @@ On success, the script shall start pidgin where you can go to
 Tools > Plugins and enable the `(n+1)sec Secure messaging` plugin.
 
 Subsequent pidgin executions can be done by executing the same command
-again. Note however, note that executing it shall update the np1sec and
+again. Note however, that executing it shall update the np1sec and
 np1sec-test-client projects to their latest versions. To avoid that
 one may instead execute
 
