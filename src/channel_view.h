@@ -35,9 +35,12 @@ public:
 
     void display(const std::string& username, const std::string& message);
 
+    template<class... Args> void inform(Args&&...);
+
     UserList& user_list() { return _user_list; }
 
     void self_destruct();
+    Channel& channel() { return _channel; }
 
 private:
     static gboolean
@@ -154,6 +157,13 @@ ChannelView::~ChannelView()
     if (_room_view.focused_channel() == this) {
         _room_view.set_channel_focus(nullptr);
     }
+}
+
+template<class... Args>
+inline
+void ChannelView::inform(Args&&... args)
+{
+    display(_channel.my_username(), util::inform_str(args...));
 }
 
 inline

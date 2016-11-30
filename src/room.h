@@ -164,9 +164,9 @@ void Room::send_chat_message(const std::string& message)
 
     auto* u = find_user_in_channel(_username);
 
-    auto channel = _room_view.focused_channel();
+    auto channel_view = _room_view.focused_channel();
 
-    if (!channel) {
+    if (!channel_view) {
         /*
          * We're sending from the main room (not a channel).
          * So send as plain text
@@ -175,8 +175,7 @@ void Room::send_chat_message(const std::string& message)
     }
 
     if (!u || !u->in_chat()) {
-        // TODO: This should be displayed in the 'page'.
-        return inform("Not in chat");
+        return channel_view->inform("Not in chat");
     }
 
     _room->send_chat(message);
