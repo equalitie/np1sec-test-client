@@ -30,7 +30,7 @@ class RoomView;
 
 class ChannelView {
 public:
-    ChannelView(RoomView&, Channel&);
+    ChannelView(const std::shared_ptr<Room>&, Channel&);
     ~ChannelView();
 
     void display(const std::string& username, const std::string& message);
@@ -39,26 +39,17 @@ public:
 
     UserList& user_list() { return _user_list; }
 
-    void self_destruct();
     Channel& channel() { return _channel; }
 
 private:
     static gboolean
-    entry_focus_cb(GtkWidget*, GdkEventFocus*, ChannelView* self)
-    {
-        self->_room_view.set_channel_focus(self);
-        return false;
-    }
+    entry_focus_cb(GtkWidget*, GdkEventFocus*, ChannelView* self);
 
     static gboolean
-    entry_nofocus_cb(GtkWidget*, GdkEventFocus*, ChannelView* self)
-    {
-        self->_room_view.set_channel_focus(nullptr);
-        return false;
-    }
+    entry_nofocus_cb(GtkWidget*, GdkEventFocus*, ChannelView* self);
 
 private:
-    RoomView& _room_view;
+    std::shared_ptr<Room> _room;
     Channel& _channel;
     PurpleConversation* _conv;
     PidginConversation* _gtkconv;
@@ -88,13 +79,14 @@ inline void set_channel_view(PurpleConversation* conv, ChannelView* cv) {
 }
 
 inline
-ChannelView::ChannelView(RoomView& room_view, Channel& channel)
-    : _room_view(room_view)
+ChannelView::ChannelView(const std::shared_ptr<Room>& room, Channel& channel)
+    : _room(room)
     , _channel(channel)
 {
-    auto conv = room_view.purple_conv();
+    assert(_room->get_view());
+    auto conv = _room->get_view()->purple_conv();
 
-    auto channel_name = room_view.room_name() + ":" + channel.channel_name();
+    auto channel_name = _room->room_name() + ":" + channel.channel_name();
 
     // We don't want the on_conversation_created signal to create the default
     // np1sec layout on this conversation. So disable it temporarily.
@@ -143,19 +135,16 @@ ChannelView::ChannelView(RoomView& room_view, Channel& channel)
 }
 
 inline
-void ChannelView::self_destruct()
-{
-    _channel._channel_page.reset();
-}
-
-inline
 ChannelView::~ChannelView()
 {
+    assert(_channel._channel_page == this);
+    _channel._channel_page = nullptr;
+
     purple_conversation_set_data(_conv, "np1sec_channel_view", nullptr);
 
     // TODO: Is this necessary?
-    if (_room_view.focused_channel() == this) {
-        _room_view.set_channel_focus(nullptr);
+    if (_room->focused_channel() == this) {
+        _room->set_channel_focus(nullptr);
     }
 }
 
@@ -175,6 +164,20 @@ void ChannelView::display(const std::string& sender, const std::string& message)
                               message.c_str(),
                               PURPLE_MESSAGE_RECV,
                               time(NULL));
+}
+
+inline gboolean
+ChannelView::entry_focus_cb(GtkWidget*, GdkEventFocus*, ChannelView* self)
+{
+    self->_room->set_channel_focus(self);
+    return false;
+}
+
+inline gboolean
+ChannelView::entry_nofocus_cb(GtkWidget*, GdkEventFocus*, ChannelView* self)
+{
+    self->_room->set_channel_focus(nullptr);
+    return false;
 }
 
 } // np1sec_plugin namespace

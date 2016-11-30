@@ -26,7 +26,6 @@
 #include "src/room.h"
 
 /* Plugin headers */
-#include "room_view.h"
 #include "timer.h"
 #include "toolbar.h"
 
@@ -37,9 +36,12 @@
 namespace np1sec_plugin {
 
 class Channel;
+class ChannelView;
 class User;
+class RoomView;
 
-struct Room final : private np1sec::RoomInterface {
+struct Room final : private np1sec::RoomInterface
+                  , public std::enable_shared_from_this<Room> {
 #ifndef _NDEBUG
     using Np1SecRoom = DebugProxy;
 #else
@@ -57,17 +59,24 @@ public:
 
     template<class... Args> void inform(Args&&... args);
 
-    RoomView& get_view() { return _room_view; }
+    void set_view(RoomView* v) { _room_view = v; }
+    RoomView* get_view() { return _room_view; }
 
     const std::string& username() const { return _username; }
 
     void user_left(const std::string&);
 
     GtkWindow* gtk_window() const;
+    //PurpleConversation* purple_conv() const { return _conv; }
 
     void authorize(const std::string& name) { _room->authorize(name); }
 
     void join_channel(np1sec::Channel*);
+
+    void set_channel_focus(ChannelView*);
+    ChannelView* focused_channel() const;
+
+    std::string room_name() const;
 
 private:
     void display(const std::string& message);
@@ -102,12 +111,14 @@ private:
     TimerToken::Storage _timers;
     np1sec::PrivateKey _private_key;
 
-    RoomView _room_view;
+    RoomView* _room_view = nullptr;
     ChannelMap _channels;
 
     std::unique_ptr<Toolbar> _toolbar;
 
     std::unique_ptr<Np1SecRoom> _room;
+
+    ChannelView* _focused_channel = nullptr;
 };
 
 } // np1sec_plugin namespace
@@ -115,6 +126,7 @@ private:
 /* Plugin headers */
 #include "channel.h"
 #include "parser.h"
+#include "room_view.h"
 
 namespace np1sec_plugin {
 //------------------------------------------------------------------------------
@@ -125,7 +137,6 @@ Room::Room(PurpleConversation* conv)
     : _conv(conv)
     , _username(sanitize_name(conv->account->username))
     , _private_key(np1sec::PrivateKey::generate())
-    , _room_view(conv, _username)
     , _toolbar(new Toolbar(PIDGIN_CONVERSATION(conv)))
 {
     _toolbar->add_button("Create channel", [this] {
@@ -164,7 +175,7 @@ void Room::send_chat_message(const std::string& message)
 
     auto* u = find_user_in_channel(_username);
 
-    auto channel_view = _room_view.focused_channel();
+    auto channel_view = focused_channel();
 
     if (!channel_view) {
         /*
@@ -277,15 +288,22 @@ void Room::join_channel(np1sec::Channel* channel)
 inline
 void Room::send_message(const std::string& message)
 {
+    if (!_room_view) {
+        // TODO: Inform the user that the main chat window has been closed.
+        return;
+    }
+
+    auto conv = _room_view->purple_conv();
+
     /*
      * Note: it's probably better to use this serv_chat_send function
-     * instead of purple_conv_chat_send(PURPLE_CONV_CHAT(_conv), m.c_str()).
+     * instead of purple_conv_chat_send(PURPLE_CONV_CHAT(conv), m.c_str()).
      * The latter would trigger the sending-chat-msg callback which
      * - again - calls this function. Thus we'd need an additional
      * mechanism to break this loop.
      */
-    serv_chat_send( purple_conversation_get_gc(_conv)
-                  , purple_conv_chat_get_id(PURPLE_CONV_CHAT(_conv))
+    serv_chat_send( purple_conversation_get_gc(conv)
+                  , purple_conv_chat_get_id(PURPLE_CONV_CHAT(conv))
                   , message.c_str()
                   , PURPLE_MESSAGE_SEND);
 }
@@ -356,14 +374,20 @@ void Room::display(const std::string& message)
 inline
 void Room::display(const std::string& sender, const std::string& message)
 {
-    /* _conv->ui_ops->write_chat isn't set (is NULL) on Pidgin. */
-    assert(_conv && _conv->ui_ops && _conv->ui_ops->write_conv);
-    _conv->ui_ops->write_conv(_conv,
-                              sender.c_str(),
-                              sender.c_str(),
-                              message.c_str(),
-                              PURPLE_MESSAGE_RECV,
-                              time(NULL));
+    if (!_room_view) return;
+
+    // TODO: Move the below code into RoomView.
+
+    auto conv = _room_view->purple_conv();
+
+    /* conv->ui_ops->write_chat isn't set (is NULL) on Pidgin. */
+    assert(conv && conv->ui_ops && conv->ui_ops->write_conv);
+    conv->ui_ops->write_conv(conv,
+                             sender.c_str(),
+                             sender.c_str(),
+                             message.c_str(),
+                             PURPLE_MESSAGE_RECV,
+                             time(NULL));
 }
 
 inline
@@ -390,7 +414,27 @@ Room::set_timer(uint32_t interval_ms, np1sec::TimerCallback* callback) {
 
 inline
 GtkWindow* Room::gtk_window() const {
-    return GTK_WINDOW(PIDGIN_CONVERSATION(_conv)->win->window);
+    if (!_room_view) return nullptr;
+    auto conv = _room_view->purple_conv();
+    return GTK_WINDOW(PIDGIN_CONVERSATION(conv)->win->window);
+}
+
+inline
+ChannelView* Room::focused_channel() const
+{
+    return _focused_channel;
+}
+
+inline
+void Room::set_channel_focus(ChannelView* cv)
+{
+    _focused_channel = cv;
+}
+
+inline
+std::string Room::room_name() const
+{
+    return _conv->title;
 }
 
 } // namespace

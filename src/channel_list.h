@@ -59,6 +59,8 @@ private:
     friend class Channel;
     friend class UserView;
 
+    std::set<Channel*> _channels;
+
     GtkTreeView* _tree_view;
     GtkTreeStore* _tree_store;
 
@@ -101,7 +103,8 @@ private:
     std::string path() const;
 
 private:
-    ChannelList& _channel_list;
+    std::set<User*> _users;
+    ChannelList* _channel_list;
     std::string _name;
     GtkTreeIter _iter;
 };
@@ -130,7 +133,9 @@ private:
     void expand(GtkTreeIter& iter);
 
 private:
-    ChannelList::Channel& _channel_view;
+    friend class Channel;
+
+    ChannelList::Channel* _channel_view;
     GtkTreeIter _iter;
 };
 
@@ -159,6 +164,10 @@ inline ChannelList::ChannelList()
 
 inline ChannelList::~ChannelList()
 {
+    for (auto* ch : _channels) {
+        ch->_channel_list = nullptr;
+    }
+
     g_object_unref(_tree_store);
     g_object_unref(_tree_view);
 }
@@ -235,21 +244,23 @@ void ChannelList::setup_callbacks(GtkTreeView* tree_view)
 // ChannelList::Channel Implementation
 //------------------------------------------------------------------------------
 inline ChannelList::Channel::Channel(ChannelList& list, const std::string& name)
-    : _channel_list(list)
+    : _channel_list(&list)
     , _name(name)
 {
-    gtk_tree_store_append(_channel_list._tree_store, &_iter, NULL);
-    gtk_tree_store_set(_channel_list._tree_store, &_iter,
+    _channel_list->_channels.insert(this);
+
+    gtk_tree_store_append(_channel_list->_tree_store, &_iter, NULL);
+    gtk_tree_store_set(_channel_list->_tree_store, &_iter,
                        COL_NAME, _name.c_str(),
                        -1);
 
     auto p = path();
 
-    _channel_list._double_click_callbacks[p] = [this] {
+    _channel_list->_double_click_callbacks[p] = [this] {
         if (on_double_click) on_double_click();
     };
 
-    _channel_list._show_popup_callbacks[p] = [this] (GdkEventButton* e) {
+    _channel_list->_show_popup_callbacks[p] = [this] (GdkEventButton* e) {
         show_popup(e, popup_actions);
     };
 }
@@ -257,13 +268,19 @@ inline ChannelList::Channel::Channel(ChannelList& list, const std::string& name)
 inline
 std::string ChannelList::Channel::path() const
 {
-    return util::gtk::tree_iter_to_path(_iter, _channel_list._tree_store);
+    return util::gtk::tree_iter_to_path(_iter, _channel_list->_tree_store);
 }
 
 inline ChannelList::Channel::~Channel()
 {
-    _channel_list._double_click_callbacks.erase(path());
-    gtk_tree_store_remove(_channel_list._tree_store, &_iter);
+    for (auto* u : _users) {
+        u->_channel_view = nullptr;
+    }
+
+    if (!_channel_list) return;
+    _channel_list->_channels.erase(this);
+    _channel_list->_double_click_callbacks.erase(path());
+    gtk_tree_store_remove(_channel_list->_tree_store, &_iter);
 }
 
 //------------------------------------------------------------------------------
@@ -271,12 +288,14 @@ inline ChannelList::Channel::~Channel()
 //------------------------------------------------------------------------------
 inline
 ChannelList::User::User(ChannelList::Channel& channel)
-    : _channel_view(channel)
+    : _channel_view(&channel)
 {
-    auto& cl = _channel_view._channel_list;
+    assert(_channel_view->_channel_list);
+
+    auto& cl = *_channel_view->_channel_list;
     auto* tree_store = cl._tree_store;
 
-    gtk_tree_store_append(tree_store, &_iter, &_channel_view._iter);
+    gtk_tree_store_append(tree_store, &_iter, &_channel_view->_iter);
 
     expand(_iter);
 
@@ -293,28 +312,39 @@ ChannelList::User::User(ChannelList::Channel& channel)
 
 inline
 ChannelList::User::~User() {
-    auto& cl = _channel_view._channel_list;
-    auto path = util::gtk::tree_iter_to_path(_iter, cl._tree_store);
 
-    gtk_tree_store_remove(cl._tree_store, &_iter);
+    if (!_channel_view) return;
 
-    cl._double_click_callbacks.erase(path);
+    _channel_view->_users.erase(this);
+
+    if (!_channel_view->_channel_list) return;
+
+    auto cl = _channel_view->_channel_list;
+    auto path = util::gtk::tree_iter_to_path(_iter, cl->_tree_store);
+
+    gtk_tree_store_remove(cl->_tree_store, &_iter);
+
+    cl->_double_click_callbacks.erase(path);
 }
 
 inline
 void ChannelList::User::set_text(const std::string& txt)
 {
-    gtk_tree_store_set(_channel_view._channel_list._tree_store,
+    if (!_channel_view) return;
+    assert(_channel_view->_channel_list);
+    gtk_tree_store_set(_channel_view->_channel_list->_tree_store,
                        &_iter,
                        0, txt.c_str(), -1);
 }
 
 inline
 void ChannelList::User::expand(GtkTreeIter& iter) {
-    auto& rv = _channel_view._channel_list;
+    if (!_channel_view) return;
+    assert(_channel_view->_channel_list);
+    auto* rv = _channel_view->_channel_list;
 
-    auto tree_store = rv._tree_store;
-    auto tree_view  = rv._tree_view;
+    auto tree_store = rv->_tree_store;
+    auto tree_view  = rv->_tree_view;
 
     auto model = GTK_TREE_MODEL(tree_store);
 

@@ -27,6 +27,9 @@
 #include "src/crypto.h"
 #include "src/channel.h"
 
+/* np1sec_plugin headers */
+#include "channel_list.h"
+
 namespace np1sec_plugin {
 
 class Room;
@@ -39,6 +42,7 @@ class Channel final : public np1sec::ChannelInterface {
 
 public:
     Channel(np1sec::Channel*, Room&);
+    ~Channel();
 
     Channel(const Channel&) = delete;
     Channel& operator=(const Channel&) = delete;
@@ -130,7 +134,7 @@ private:
     std::map<std::string, std::unique_ptr<User>> _users;
 
     // Is non null iff we've joined the channel.
-    std::unique_ptr<ChannelView> _channel_page;
+    ChannelView* _channel_page = nullptr;
 };
 
 } // np1sec_plugin namespace
@@ -148,7 +152,7 @@ namespace np1sec_plugin {
 inline Channel::Channel(np1sec::Channel* delegate, Room& room)
     : _delegate(delegate)
     , _room(room)
-    , _view(_room.get_view().channel_list(), channel_name())
+    , _view(_room.get_view()->channel_list(), channel_name())
 {
     for (const auto& user : _delegate->users()) {
         auto& u = add_member(user);
@@ -162,11 +166,16 @@ inline Channel::Channel(np1sec::Channel* delegate, Room& room)
          * library.
          */
         if (_room.find_user_in_channel(_room.username())) {
-            inform("Already in a channel ", _channel_page.get());
+            inform("Already in a channel");
             return;
         }
         _room.join_channel(_delegate);
     };
+}
+
+inline Channel::~Channel()
+{
+    //delete _channel_page;
 }
 
 inline std::string Channel::channel_name() const
@@ -176,7 +185,8 @@ inline std::string Channel::channel_name() const
 
 inline void Channel::mark_as_joined()
 {
-    _channel_page.reset(new ChannelView(_room._room_view, *this));
+    assert(!_channel_page);
+    _channel_page = new ChannelView(_room.shared_from_this(), *this);
 
     for (auto& user : _users | boost::adaptors::map_values) {
         user->bind_user_list(_channel_page->user_list());

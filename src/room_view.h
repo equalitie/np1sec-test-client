@@ -26,10 +26,11 @@ namespace np1sec_plugin {
 
 class ChannelList;
 class ChannelView;
+class Room;
 
 class RoomView {
 public:
-    RoomView(PurpleConversation*, const std::string& username);
+    RoomView(PurpleConversation*, const std::shared_ptr<Room>& room);
     ~RoomView();
 
     RoomView(RoomView&&) = delete;
@@ -41,12 +42,8 @@ public:
 
     PurpleConversation* purple_conv() { return _conv; }
 
-    void set_channel_focus(ChannelView*);
-    ChannelView* focused_channel() const;
-    std::string room_name() const;
-
 private:
-    const std::string _username;
+    std::shared_ptr<Room> _room;
 
     PurpleConversation* _conv;
     PidginConversation* _gtkconv;
@@ -55,8 +52,6 @@ private:
 
     GtkWidget* _content;
     GtkWidget* _parent;
-
-    ChannelView* _focused_channel_conv = nullptr;
 
     /*
      * This is a pointer to the widget that holds the output
@@ -71,19 +66,23 @@ private:
 } // np1sec_plugin namespace
 
 #include "channel_list.h"
+#include "room.h"
 
 namespace np1sec_plugin {
 
 //------------------------------------------------------------------------------
 // Implementation
 //------------------------------------------------------------------------------
-inline RoomView::RoomView(PurpleConversation* conv, const std::string& username)
-    : _username(username)
+inline RoomView::RoomView(PurpleConversation* conv, const std::shared_ptr<Room>& room)
+    : _room(room)
+    , _conv(conv)
 {
+    assert(_room->get_view() == nullptr);
+    _room->set_view(this);
+
     // TODO: Throw instead of assert.
 
-    _conv = conv;
-    _gtkconv = PIDGIN_CONVERSATION(conv);
+    _gtkconv = PIDGIN_CONVERSATION(_conv);
 
     if (!_gtkconv) {
         assert(0 && "Not a pidgin conversation");
@@ -143,26 +142,11 @@ inline RoomView::RoomView(PurpleConversation* conv, const std::string& username)
 }
 
 inline
-std::string RoomView::room_name() const
-{
-    return _conv->title;
-}
-
-inline
-ChannelView* RoomView::focused_channel() const
-{
-    return _focused_channel_conv;
-}
-
-inline
-void RoomView::set_channel_focus(ChannelView* cv)
-{
-    _focused_channel_conv = cv;
-}
-
-inline
 RoomView::~RoomView()
 {
+    assert(_room->get_view() == this);
+    _room->set_view(nullptr);
+
     gtk_container_remove(GTK_CONTAINER(_vpaned), _userlist);
     gtk_container_remove(GTK_CONTAINER(_target), _vpaned);
 
@@ -176,6 +160,15 @@ inline
 ChannelList& RoomView::channel_list()
 {
     return *_channel_list;
+}
+
+inline RoomView* get_room_view(PurpleConversation* conv) {
+    auto p = purple_conversation_get_data(conv, "np1sec_room_view");
+    return reinterpret_cast<RoomView*>(p);
+}
+
+inline void set_room_view(PurpleConversation* conv, RoomView* rv) {
+    purple_conversation_set_data(conv, "np1sec_room_view", rv);
 }
 
 } // np1sec_plugin namespace

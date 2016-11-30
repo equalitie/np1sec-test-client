@@ -56,9 +56,6 @@ static Room* get_room(PurpleAccount* account)
 
 static void set_room(PurpleAccount* account, Room* room)
 {
-    if (auto r = get_room(account)) {
-        delete r;
-    }
     account->ui_data = room;
 }
 
@@ -141,9 +138,16 @@ void chat_buddy_left_cb(PurpleConversation* conv, const char* name, const char*,
 //------------------------------------------------------------------------------
 static void apply_np1sec(PurpleConversation* conv)
 {
+    using namespace np1sec_plugin;
+
     assert(is_chat(conv));
     assert(!get_room(conv));
-    set_room(conv, new Room(conv));
+
+    auto room = std::make_shared<Room>(conv);
+    auto room_view = new RoomView(conv, room);
+
+    set_room_view(conv, room_view);
+    set_room(conv, room.get());
 }
 
 static void unapply_np1sec(PurpleConversation* conv)
@@ -152,17 +156,15 @@ static void unapply_np1sec(PurpleConversation* conv)
     if (!get_room(conv)) return;
 
     auto channel_view = np1sec_plugin::get_channel_view(conv);
+    auto room_view    = np1sec_plugin::get_room_view(conv);
 
-    if (channel_view) {
-        channel_view->self_destruct();
-    }
-    else {
-        /* Only destroy the np1sec room if this conversation doesn't
-         * represent a channel. */
-        if (!np1sec_plugin::get_channel_view(conv)) {
-            set_room(conv, nullptr);
-        }
-    }
+    assert((channel_view || room_view) && !(channel_view && room_view));
+
+    delete channel_view;
+    delete room_view;
+
+    np1sec_plugin::set_channel_view(conv, nullptr);
+    np1sec_plugin::set_room_view(conv, nullptr);
 }
 
 //------------------------------------------------------------------------------
