@@ -29,8 +29,10 @@ namespace np1sec_plugin {
 class Channel;
 
 class User {
+    using PublicKey = np1sec::PublicKey;
+
 public:
-    User(Channel& channel, const std::string& name);
+    User(Channel& channel, const std::string& name, const PublicKey&);
 
     User(const User&) = delete;
     User& operator=(const User&) = delete;
@@ -41,34 +43,30 @@ public:
     const std::string& name() const { return _name; }
 
 public:
-    boost::optional<np1sec::PublicKey> public_key;
+    const PublicKey& public_key() const { return _public_key; }
     const std::set<std::string>& authorized_by() const { return _authorized_by; }
 
     void authorized_by(std::string name);
     void un_authorized_by(std::string name);
-    bool is_authorized() const;
-    void set_promoted(bool);
-    bool was_promoted() const;
-    bool was_promoted_by_me() const;
-    bool is_myself() const { return _is_myself; }
-
-    bool in_chat() const;
+    void mark_joined();
+    void mark_in_chat();
+    void mark_as_invited();
 
     void update_view();
 
     const Channel& channel() const { return _channel; }
 
-    bool needs_authorization_from_me() const;
-
     void bind_user_list(UserList&);
 
 private:
     std::string _name;
+    PublicKey _public_key;
     Channel& _channel;
     bool _is_myself;
-    bool _was_promoted = false;
+    bool _has_joined = false;
+    bool _is_in_chat = false;
+    bool _is_invited = false;
     std::set<std::string> _authorized_by;
-    std::unique_ptr<ChannelList::User> _view;
     UserList::User _view_in_channel;
 };
 
@@ -76,23 +74,24 @@ private:
 
 #include "channel.h"
 #include "user_info_dialog.h"
+#include "room_view.h"
 
 namespace np1sec_plugin {
 //------------------------------------------------------------------------------
 // Implementation
 //------------------------------------------------------------------------------
 inline
-User::User(Channel& channel, const std::string& name)
+User::User(Channel& channel, const std::string& name, const PublicKey& pubkey)
     : _name(name)
+    , _public_key(pubkey)
     , _channel(channel)
     , _is_myself(name == channel._room.username())
     , _authorized_by({name})
-    , _view(new ChannelList::User(channel._view))
 {
-    _view->popup_actions["Info"] = [this] {
-        auto gtk_window = _channel._room.gtk_window();
-        UserInfoDialog::show(gtk_window, *this);
-    };
+    //_view_in_room.popup_actions["Info"] = [this] {
+    //    auto gtk_window = _channel._room.gtk_window();
+    //    UserInfoDialog::show(gtk_window, *this);
+    //};
 
     update_view();
 }
@@ -104,63 +103,41 @@ void User::bind_user_list(UserList& user_list)
     update_view();
 }
 
-inline
-bool User::needs_authorization_from_me() const
-{
-    if (is_myself()) return false;
-
-    auto myname = channel().my_username();
-
-    if (!channel().find_user(myname)) {
-        return false;
-    }
-
-    if (!was_promoted_by_me()) {
-        if (channel().user_in_chat(myname)) {
-            return true;
-        }
-        else {
-            if (is_authorized()) {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
-inline bool User::is_authorized() const
-{
-    return _channel._delegate->user_is_authorized(_name);
-}
-
 inline void User::update_view()
 {
     auto name = _name;
 
-    if (needs_authorization_from_me()) {
-        name = "*" + name;
+    bool can_invite = !_is_invited && !_has_joined && !_is_in_chat;
 
-        auto authorize = [this] {
-            _channel._room.authorize(_name);
+    _view_in_channel.popup_actions.clear();
+
+    if (can_invite) {
+        auto invite = [this] {
+            _channel.invite(_name, _public_key);
         };
 
-        _view->popup_actions["Authorize"] = authorize;
-        _view->on_double_click = authorize;
-        _view_in_channel.on_double_click = authorize;
+        _view_in_channel.popup_actions["Invite"] = invite;
     }
 
-    if (in_chat()) {
-        name += " (chatting)";
+    if (_is_myself && _is_invited && !_has_joined && !_is_in_chat) {
+        _view_in_channel.popup_actions["Join"] = [this] {
+            _channel._delegate->join();
+        };
     }
 
-    _view->set_text(name);
+    if (_has_joined) {
+        name += " j";
+    }
+
+    if (_is_in_chat) {
+        name += " c";
+    }
+
+    if (_is_invited && !_has_joined && !_is_in_chat) {
+        name += " i";
+    }
+
     _view_in_channel.set_text(name);
-}
-
-inline bool User::in_chat() const
-{
-    return _channel._delegate->user_in_chat(_name);
 }
 
 inline void User::authorized_by(std::string name)
@@ -175,17 +152,19 @@ inline void User::un_authorized_by(std::string name)
     update_view();
 }
 
-inline void User::set_promoted(bool value) {
-    _was_promoted = value;
+inline void User::mark_joined() {
+    _has_joined = true;
     update_view();
 }
 
-inline bool User::was_promoted() const {
-    return _was_promoted;
+inline void User::mark_in_chat() {
+    _is_in_chat = true;
+    update_view();
 }
 
-inline bool User::was_promoted_by_me() const {
-    return _authorized_by.count(_channel._room.username());
+inline void User::mark_as_invited() {
+    _is_invited = true;
+    update_view();
 }
 
 } // np1sec_plugin namespace

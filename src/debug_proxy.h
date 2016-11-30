@@ -44,29 +44,34 @@ public:
         util::exec(msg.c_str(), [&] { delegate.reset(new np1sec::Room(ri, username, k)); });
     }
 
-    void join_channel(np1sec::Channel* c) {
-        auto msg = _username + ":np1sec::Room::join_channel";
-        util::exec(msg.c_str(), [&] { delegate->join_channel(c); });
+    bool connected() const {
+        auto msg = _username + ":np1sec::Room::connected";
+        return util::exec(msg.c_str(), [&] { return delegate->connected(); });
     }
 
-    void create_channel() {
-        auto msg = _username + ":np1sec::Room::create_channel";
-        util::exec(msg.c_str(), [&] { delegate->create_channel(); });
+    std::map<std::string, np1sec::PublicKey> users() {
+        auto msg = _username + ":np1sec::Room::users";
+        return util::exec(msg.c_str(), [&] { return delegate->users(); });
     }
 
-    void search_channels() {
-        auto msg = _username + ":np1sec::Room::search_channels";
-        util::exec(msg.c_str(), [&] { delegate->search_channels(); });
+    void connect() {
+        auto msg = _username + ":np1sec::Room::connect";
+        util::exec(msg.c_str(), [&] { delegate->connect(); });
     }
 
-    void send_chat(const std::string& str) {
-        auto msg = _username + ":np1sec::Room::send_chat";
-        util::exec(msg.c_str(), [&] { delegate->send_chat(str); });
+    void disconnect() {
+        auto msg = _username + ":np1sec::Room::disconnect";
+        util::exec(msg.c_str(), [&] { delegate->disconnect(); });
     }
 
-    void message_received(const std::string& sender, const std::string& message) {
+    void create_conversation() {
+        auto msg = _username + ":np1sec::Room::create_conversation";
+        util::exec(msg.c_str(), [&] { delegate->create_conversation(); });
+    }
+
+    void message_received(const std::string& sender, const std::string& text) {
         auto msg = _username + ":np1sec::Room::message_received";
-        util::exec(msg.c_str(), [&] { delegate->message_received(sender, message); });
+        util::exec(msg.c_str(), [&] { delegate->message_received(sender, text); });
     }
 
     void user_left(const std::string& user) {
@@ -74,9 +79,9 @@ public:
         util::exec(msg.c_str(), [&] { delegate->user_left(user); });
     }
 
-    void authorize(const std::string& user) {
-        auto msg = _username + ":np1sec::Room::authorize";
-        util::exec(msg.c_str(), [&] { delegate->authorize(user); });
+    void left_room() {
+        auto msg = _username + ":np1sec::Room::left_room";
+        util::exec(msg.c_str(), [&] { delegate->left_room(); });
     }
 
 private:
