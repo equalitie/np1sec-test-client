@@ -315,6 +315,10 @@ void Channel::inform(Args&&... args)
 
 void Channel::message_received(const std::string& username, const std::string& message)
 {
+    /* TODO: Currently there is no way to tell np1sec to leave a channel
+     * but when the user closes his channel window the _channel_page is
+     * destroyed. So for now ignore received messages. */
+    if (!_channel_page) return;
     assert(_channel_page);
     _channel_page->display(username, message);
 }

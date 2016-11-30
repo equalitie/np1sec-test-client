@@ -37,6 +37,8 @@ public:
 
     UserList& user_list() { return _user_list; }
 
+    void self_destruct();
+
 private:
     static gboolean
     entry_focus_cb(GtkWidget*, GdkEventFocus*, ChannelView* self)
@@ -138,10 +140,15 @@ ChannelView::ChannelView(RoomView& room_view, Channel& channel)
 }
 
 inline
+void ChannelView::self_destruct()
+{
+    _channel._channel_page.reset();
+}
+
+inline
 ChannelView::~ChannelView()
 {
-    set_channel_view(_conv, nullptr);
-    _channel._channel_page.reset();
+    purple_conversation_set_data(_conv, "np1sec_channel_view", nullptr);
 
     // TODO: Is this necessary?
     if (_room_view.focused_channel() == this) {

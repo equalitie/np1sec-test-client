@@ -154,7 +154,7 @@ static void unapply_np1sec(PurpleConversation* conv)
     auto channel_view = np1sec_plugin::get_channel_view(conv);
 
     if (channel_view) {
-        delete channel_view;
+        channel_view->self_destruct();
     }
     else {
         /* Only destroy the np1sec room if this conversation doesn't
