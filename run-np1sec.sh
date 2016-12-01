@@ -121,7 +121,7 @@ if [ ! -d np1sec-test-client ]; then
 else
 	cd np1sec-test-client
 	git remote update
-	if [ `git rev-parse @` != `git rev-parse origin"${NP1SEC_TEST_CLIENT_BRANCH}"` -o ! -e ../bin/"`libname np1sec-plugin`" ]; then
+	if [ `git rev-parse @` != `git rev-parse origin/"${NP1SEC_TEST_CLIENT_BRANCH}"` -o ! -e ../bin/"`libname np1sec-plugin`" ]; then
 		git checkout "${NP1SEC_TEST_CLIENT_BRANCH}"
 		git pull origin "${NP1SEC_TEST_CLIENT_BRANCH}"
 		cd ..
