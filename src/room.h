@@ -158,7 +158,7 @@ inline
 Room::Room(PurpleConversation* conv)
     : _conv(conv)
     , _username(sanitize_name(conv->account->username))
-    , _private_key(np1sec::PrivateKey::generate())
+    , _private_key(np1sec::PrivateKey::generate(true))
     , _toolbar(new Toolbar(PIDGIN_CONVERSATION(conv)))
 {
     //_toolbar->add_button("Create conversation", [this] {
