@@ -80,7 +80,7 @@ fi
 
 if [ ! -d np1sec ]; then
 	rm -rf np1sec np1sec-build bin/"`libdir`"/"`libname np1sec`"
-	git clone https://github.com/equalitie/np1sec.git np1sec
+	git clone https://github.com/equalitie/np1sec.git np1sec -b invites
 	mkdir np1sec-build
 	cd np1sec-build
 	cmake ../np1sec -DCMAKE_INSTALL_PREFIX="${WORKDIR}"/bin -DBUILD_TESTS=Off
@@ -91,7 +91,7 @@ else
 	cd np1sec
 	git remote update
 	if [ `git rev-parse @` != `git rev-parse origin` -o ! -e ../bin/"`libdir`"/"`libname np1sec`" ]; then
-		git pull origin master
+		git pull origin invites
 		cd ..
 		cd np1sec-build
 		make ${MAKEOPTS}
@@ -102,7 +102,7 @@ fi
 
 if [ ! -d np1sec-test-client ]; then
 	rm -rf np1sec-test-client np1sec-test-client-build
-	git clone https://github.com/equalitie/np1sec-test-client.git np1sec-test-client
+	git clone https://github.com/equalitie/np1sec-test-client.git np1sec-test-client -b invite
 	mkdir np1sec-test-client-build
 	cd np1sec-test-client-build
 	cmake ../np1sec-test-client -DPIDGIN_INC_DIR="${WORKDIR}"/bin/include -DNP1SEC_LIB_DIR="${WORKDIR}"/bin/lib -DNP1SEC_INC_DIR="${WORKDIR}"/np1sec
@@ -113,7 +113,7 @@ else
 	cd np1sec-test-client
 	git remote update
 	if [ `git rev-parse @` != `git rev-parse origin` -o ! -e ../bin/"`libname np1sec-plugin`" ]; then
-		git pull origin master
+		git pull origin invite
 		cd ..
 		cd np1sec-test-client-build
 		make ${MAKEOPTS}
