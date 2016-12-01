@@ -36,7 +36,7 @@ WORKDIR="`pwd`"
 DEPS=""
 
 type ${CC-cc} >/dev/null || DEPS="${DEPS} c-compiler"
-type ${CC-c++} >/dev/null || DEPS="${DEPS} cxx-compiler"
+type ${CXX-c++} >/dev/null || DEPS="${DEPS} cxx-compiler"
 type pkg-config >/dev/null || DEPS="${DEPS} pkg-config"
 
 if [ -n "${DEPS}" ]; then
@@ -78,48 +78,58 @@ if [ ! -x bin/bin/pidgin ]; then
 	cd ..
 fi
 
+NP1SEC_BRANCH=invites
 if [ ! -d np1sec ]; then
 	rm -rf np1sec np1sec-build bin/"`libdir`"/"`libname np1sec`"
-	git clone https://github.com/equalitie/np1sec.git np1sec -b invites
+	git clone https://github.com/equalitie/np1sec.git np1sec
+	cd np1sec
+	git checkout "${NP1SEC_BRANCH}"
+	cd ..
 	mkdir np1sec-build
 	cd np1sec-build
 	cmake ../np1sec -DCMAKE_INSTALL_PREFIX="${WORKDIR}"/bin -DBUILD_TESTS=Off
 	make ${MAKEOPTS}
 	cp "`libname np1sec`" ../bin/"`libdir`"/
-    cd ..
+	cd ..
 else
 	cd np1sec
 	git remote update
-	if [ `git rev-parse @` != `git rev-parse origin` -o ! -e ../bin/"`libdir`"/"`libname np1sec`" ]; then
-		git pull origin invites
+	if [ `git rev-parse @` != `git rev-parse origin/"${NP1SEC_BRANCH}"` -o ! -e ../bin/"`libdir`"/"`libname np1sec`" ]; then
+		git checkout "${NP1SEC_BRANCH}"
+		git pull origin "${NP1SEC_BRANCH}"
 		cd ..
 		cd np1sec-build
 		make ${MAKEOPTS}
 		cp "`libname np1sec`" ../bin/"`libdir`"/
 	fi
-    cd ..
+	cd ..
 fi
 
+NP1SEC_TEST_CLIENT_BRANCH=invite
 if [ ! -d np1sec-test-client ]; then
 	rm -rf np1sec-test-client np1sec-test-client-build
-	git clone https://github.com/equalitie/np1sec-test-client.git np1sec-test-client -b invite
+	git clone https://github.com/equalitie/np1sec-test-client.git np1sec-test-client
+	cd np1sec-test-client
+	git checkout "${NP1SEC_TEST_CLIENT_BRANCH}"
+	cd ..
 	mkdir np1sec-test-client-build
 	cd np1sec-test-client-build
 	cmake ../np1sec-test-client -DPIDGIN_INC_DIR="${WORKDIR}"/bin/include -DNP1SEC_LIB_DIR="${WORKDIR}"/bin/lib -DNP1SEC_INC_DIR="${WORKDIR}"/np1sec
 	make ${MAKEOPTS}
 	cp "`libname np1sec-plugin`" ../bin/
-    cd ..
+	cd ..
 else
 	cd np1sec-test-client
 	git remote update
-	if [ `git rev-parse @` != `git rev-parse origin` -o ! -e ../bin/"`libname np1sec-plugin`" ]; then
-		git pull origin invite
+	if [ `git rev-parse @` != `git rev-parse origin"${NP1SEC_TEST_CLIENT_BRANCH}"` -o ! -e ../bin/"`libname np1sec-plugin`" ]; then
+		git checkout "${NP1SEC_TEST_CLIENT_BRANCH}"
+		git pull origin "${NP1SEC_TEST_CLIENT_BRANCH}"
 		cd ..
 		cd np1sec-test-client-build
 		make ${MAKEOPTS}
 		cp "`libname np1sec-plugin`" ../bin/
 	fi
-    cd ..
+	cd ..
 fi
 
 if [ ! -e pidgin-home/plugins/"`libname np1sec-plugin`" ]; then
