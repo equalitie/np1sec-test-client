@@ -86,7 +86,7 @@ if [ ! -d np1sec ]; then
 	cmake ../np1sec -DCMAKE_INSTALL_PREFIX="${WORKDIR}"/bin -DBUILD_TESTS=Off
 	make ${MAKEOPTS}
 	cp "`libname np1sec`" ../bin/"`libdir`"/
-    cd ..
+	cd ..
 else
 	cd np1sec
 	git remote update
@@ -97,7 +97,7 @@ else
 		make ${MAKEOPTS}
 		cp "`libname np1sec`" ../bin/"`libdir`"/
 	fi
-    cd ..
+	cd ..
 fi
 
 if [ ! -d np1sec-test-client ]; then
@@ -108,7 +108,7 @@ if [ ! -d np1sec-test-client ]; then
 	cmake ../np1sec-test-client -DPIDGIN_INC_DIR="${WORKDIR}"/bin/include -DNP1SEC_LIB_DIR="${WORKDIR}"/bin/lib -DNP1SEC_INC_DIR="${WORKDIR}"/np1sec
 	make ${MAKEOPTS}
 	cp "`libname np1sec-plugin`" ../bin/
-    cd ..
+	cd ..
 else
 	cd np1sec-test-client
 	git remote update
@@ -119,7 +119,7 @@ else
 		make ${MAKEOPTS}
 		cp "`libname np1sec-plugin`" ../bin/
 	fi
-    cd ..
+	cd ..
 fi
 
 if [ ! -e pidgin-home/plugins/"`libname np1sec-plugin`" ]; then
