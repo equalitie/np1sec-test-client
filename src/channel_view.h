@@ -75,9 +75,6 @@ inline ChannelView* get_channel_view(PurpleConversation* conv) {
 }
 
 inline void set_channel_view(PurpleConversation* conv, ChannelView* cv) {
-    if (auto p = get_channel_view(conv)) {
-        delete p;
-    }
     purple_conversation_set_data(conv, "np1sec_channel_view", cv);
 }
 
@@ -149,6 +146,12 @@ ChannelView::~ChannelView()
 {
     assert(_channel);
     assert(_channel->_channel_page == this);
+
+    if (get_channel_view(_conv)) {
+        set_channel_view(_conv, nullptr);
+        purple_conversation_destroy(_conv);
+    }
+
     _channel->_channel_page = nullptr;
 
     purple_conversation_set_data(_conv, "np1sec_channel_view", nullptr);

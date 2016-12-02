@@ -55,6 +55,7 @@ struct Room final : private np1sec::RoomInterface
 
 public:
     Room(PurpleConversation* conv);
+    ~Room();
 
     void start();
     bool started() const { return _room.get(); }
@@ -73,12 +74,12 @@ public:
 
     GtkWindow* gtk_window() const;
 
-    //void join_channel(np1sec::Conversation*);
-
     void set_channel_focus(ChannelView*);
     ChannelView* focused_channel() const;
 
     std::string room_name() const;
+
+    void close_all_channels();
 
 private:
     void display(const std::string& message);
@@ -109,6 +110,7 @@ private:
     bool interpret_as_command(const std::string&);
     User* find_user_in_channel(const std::string& username);
     void add_user(const std::string& username, const PublicKey&);
+    void remove_user(const std::string& username);
 
 private:
     friend class Channel;
@@ -187,6 +189,17 @@ User* Room::find_user_in_channel(const std::string& username)
 }
 
 inline
+Room::~Room()
+{
+}
+
+inline
+void Room::close_all_channels()
+{
+    _channels.clear();
+}
+
+inline
 void Room::send_chat_message(const std::string& message)
 {
     auto channel_view = focused_channel();
@@ -211,13 +224,6 @@ void Room::send_chat_message(const std::string& message)
     //}
 
     //_room->send_chat(message);
-}
-
-inline
-void Room::user_left(const std::string& user)
-{
-    _room->user_left(user);
-    _users.erase(user);
 }
 
 inline
@@ -285,6 +291,39 @@ void Room::send_message(const std::string& message)
 }
 
 inline
+void Room::add_user(const std::string& username, const PublicKey& pubkey)
+{
+    if (_users.count(username)) {
+        assert(0 && "User is already in the room");
+        return;
+    }
+
+    auto u = new UserList::User();
+
+    if (auto v = get_view()) {
+        u->bind(v->user_list());
+    }
+
+    _users[username] = std::unique_ptr<UserList::User>(u);
+
+    if (username == _username) {
+        u->set_text(username + " (self)");
+    }
+    else {
+        u->set_text(username);
+
+        u->popup_actions["Invite"] = [this, username, pubkey] {
+            _invite_queue.emplace(std::set<Invitee>{Invitee{username, pubkey}});
+            _room->create_conversation();
+        };
+    }
+
+    for (auto& c : _channels | boost::adaptors::map_values) {
+        c->add_user(username, pubkey);
+    }
+}
+
+inline
 void Room::user_joined(const std::string& username, const PublicKey& pubkey)
 {
     inform("Room::user_joined ", username);
@@ -292,10 +331,28 @@ void Room::user_joined(const std::string& username, const PublicKey& pubkey)
 }
 
 inline
+void Room::remove_user(const std::string& username)
+{
+    _users.erase(username);
+
+    for (auto& c : _channels | boost::adaptors::map_values) {
+        c->remove_user(username);
+    }
+}
+
+inline
 void Room::user_left(const std::string& username, const PublicKey&)
 {
-    inform("Room::user_left ", username);
-    _users.erase(username);
+    inform("Room::user_left ", username, " (event from np1sec)");
+    remove_user(username);
+}
+
+inline
+void Room::user_left(const std::string& username)
+{
+    inform("Room::user_left ", username, " (event from pidgin)");
+    _room->user_left(username);
+    remove_user(username);
 }
 
 inline
@@ -338,39 +395,6 @@ Room::invited_to_conversation(np1sec::Conversation* c, const std::string& by)
     auto p = new Channel(c, *this);
     _channels.emplace(c, std::unique_ptr<Channel>(p));
     return p;
-}
-
-inline
-void Room::add_user(const std::string& username, const PublicKey& pubkey)
-{
-    if (_users.count(username)) {
-        assert(0 && "User is already in the room");
-        return;
-    }
-
-    auto u = new UserList::User();
-
-    if (auto v = get_view()) {
-        u->bind(v->user_list());
-    }
-
-    _users[username] = std::unique_ptr<UserList::User>(u);
-
-    if (username == _username) {
-        u->set_text(username + " (self)");
-    }
-    else {
-        u->set_text(username);
-
-        u->popup_actions["Invite"] = [this, username, pubkey] {
-            _invite_queue.emplace(std::set<Invitee>{Invitee{username, pubkey}});
-            _room->create_conversation();
-        };
-    }
-
-    for (auto& c : _channels) {
-        c.second->add_member(username, pubkey);
-    }
 }
 
 inline

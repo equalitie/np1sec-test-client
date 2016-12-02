@@ -153,18 +153,29 @@ static void apply_np1sec(PurpleConversation* conv)
 static void unapply_np1sec(PurpleConversation* conv)
 {
     assert(is_chat(conv));
-    if (!get_room(conv)) return;
 
     auto channel_view = np1sec_plugin::get_channel_view(conv);
     auto room_view    = np1sec_plugin::get_room_view(conv);
 
-    assert((channel_view || room_view) && !(channel_view && room_view));
+    assert(!(channel_view && room_view));
+
+    /*
+     * It is important here to first set the channel view to null to
+     * before deleting the channel view. This way we tell the channel view
+     * not to call purple_conversation_destroy recursively.
+     */
+    np1sec_plugin::set_channel_view(conv, nullptr);
+    np1sec_plugin::set_room_view(conv, nullptr);
+
+    if (room_view) {
+        auto room = get_room(conv);
+        assert(room);
+        room->close_all_channels();
+        set_room(conv, nullptr);
+    }
 
     delete channel_view;
     delete room_view;
-
-    np1sec_plugin::set_channel_view(conv, nullptr);
-    np1sec_plugin::set_room_view(conv, nullptr);
 }
 
 //------------------------------------------------------------------------------

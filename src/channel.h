@@ -53,7 +53,8 @@ public:
     /*
      * Internal
      */
-    User& add_member(const std::string&, const PublicKey&);
+    User& add_user(const std::string&, const PublicKey&);
+    void remove_user(const std::string&);
     void set_user_public_key(const std::string& username, const PublicKey&);
     //void promote_user(const std::string& username);
     User* find_user(const std::string&);
@@ -92,10 +93,10 @@ private:
     template<class... Args> void inform(Args&&...);
     void interpret_as_command(const std::string& msg);
     std::map<std::string, PublicKey> get_users() const;
-    User& add_member(const std::string&,
-                     const PublicKey&,
-                     const std::set<std::string>& participants,
-                     const std::set<std::string>& invitees);
+    User& add_user(const std::string&,
+                   const PublicKey&,
+                   const std::set<std::string>& participants,
+                   const std::set<std::string>& invitees);
 
 private:
     friend class User;
@@ -137,7 +138,7 @@ inline Channel::Channel(np1sec::Conversation* delegate, Room& room)
         const auto& username = username_and_key.first;
         const auto& key      = username_and_key.second;
 
-        auto& u = add_member(username, key, participants, invitees);
+        auto& u = add_user(username, key, participants, invitees);
 
         u.update_view();
     }
@@ -157,9 +158,7 @@ inline Channel::Channel(np1sec::Conversation* delegate, Room& room)
 
 inline Channel::~Channel()
 {
-    if (_channel_page) {
-        _channel_page->reset_channel();
-    }
+    delete _channel_page;
 }
 
 inline
@@ -261,19 +260,19 @@ void Channel::invitation_cancelled(const std::string& inviter, const std::string
     inform("Channel::invitation_cancelled ", inviter, " ", invitee);
 }
 
-inline User& Channel::add_member( const std::string& username
-                                , const PublicKey& pubkey)
+inline User& Channel::add_user( const std::string& username
+                              , const PublicKey& pubkey)
 {
-    return add_member(username,
-                      pubkey,
-                      _delegate->participants(),
-                      _delegate->invitees());
+    return add_user(username,
+                    pubkey,
+                    _delegate->participants(),
+                    _delegate->invitees());
 }
 
-inline User& Channel::add_member( const std::string& username
-                                , const PublicKey& pubkey
-                                , const std::set<std::string>& participants
-                                , const std::set<std::string>& invitees)
+inline User& Channel::add_user( const std::string& username
+                              , const PublicKey& pubkey
+                              , const std::set<std::string>& participants
+                              , const std::set<std::string>& invitees)
 {
     assert(_users.count(username) == 0);
 
@@ -299,6 +298,21 @@ inline User& Channel::add_member( const std::string& username
     return *(i.first->second.get());
 }
 
+inline void Channel::remove_user(const std::string& username)
+{
+    _users.erase(username);
+
+    if (_users.empty()) {
+        // Self destruct.
+        _room._channels.erase(_delegate);
+        return;
+    }
+
+    for (auto& user : _users | boost::adaptors::map_values) {
+        user->un_authorized_by(username);
+    }
+}
+
 inline
 void Channel::user_joined(const std::string& username)
 {
@@ -319,17 +333,7 @@ inline
 void Channel::user_left(const std::string& username)
 {
     inform("Channel::user_left(", username, ")");
-    _users.erase(username);
-
-    if (_users.empty()) {
-        // Self destruct.
-        _room._channels.erase(_delegate);
-        return;
-    }
-
-    for (auto& user : _users | boost::adaptors::map_values) {
-        user->un_authorized_by(username);
-    }
+    remove_user(username);
 }
 
 inline
