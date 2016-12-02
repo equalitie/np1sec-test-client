@@ -6,8 +6,7 @@ not rely on it for secure communications.
 
 # Setup for users
 
-The (n+1)sec test client can be used in any Linux distribution. We suggest using
-Debian or one of its derivatives, since we are using those for development.
+The (n+1)sec test client can be used in any Linux distribution.
 
 ## Dependencies
 
