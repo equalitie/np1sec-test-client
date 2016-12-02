@@ -169,6 +169,10 @@ void Channel::send_chat_message(const std::string& msg)
         return interpret_as_command(msg.substr(1));
     }
 
+    if (!_delegate->in_chat()) {
+        return inform("You are currently not in the chat");
+    }
+
     _delegate->send_chat(msg);
 }
 
