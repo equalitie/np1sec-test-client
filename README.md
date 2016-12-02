@@ -8,6 +8,7 @@
 cmake
 git
 wget
+intltool
 libboost1.58-dev (or higher)
 libglib2.0-dev
 libgtk2.0-dev
