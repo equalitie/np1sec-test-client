@@ -37,12 +37,16 @@ public:
 
     template<class... Args> void inform(Args&&...);
 
-    UserList& user_list() { return _user_list; }
+    UserList& joined_user_list() { return _joined_users; }
+    UserList& invited_user_list() { return _invited_users; }
+    UserList& other_user_list() { return _other_users; }
 
     Channel* channel() { return _channel; }
     void reset_channel() { _channel = nullptr; }
 
     void send_chat_message(const std::string&);
+
+    bool purple_conversation_destroyed = false;
 
 private:
     static gboolean
@@ -57,7 +61,12 @@ private:
     PurpleConversation* _conv;
     PidginConversation* _gtkconv;
 
-    UserList _user_list;
+    UserList _joined_users;
+    UserList _invited_users;
+    UserList _other_users;
+
+    gint focus_in_signal_id, focus_out_signal_id;
+    GtkWidget *_target, *_userlist, *_vbox;
 };
 
 } // np1sec_plugin namespace
@@ -89,6 +98,9 @@ inline
 ChannelView::ChannelView(const std::shared_ptr<Room>& room, Channel& channel)
     : _room(room)
     , _channel(&channel)
+    , _joined_users("Joined")
+    , _invited_users("Invited")
+    , _other_users("Invite")
 {
     assert(_room->get_view());
     auto conv = _room->get_view()->purple_conv();
@@ -98,12 +110,11 @@ ChannelView::ChannelView(const std::shared_ptr<Room>& room, Channel& channel)
     // We don't want the on_conversation_created signal to create the default
     // np1sec layout on this conversation. So disable it temporarily.
     {
-        auto f = std::move(GlobalSignals::instance().on_conversation_created);
+        auto& sigs = GlobalSignals::instance();
 
+        auto f = std::move(sigs.on_conversation_created);
         _conv = purple_conversation_new(PURPLE_CONV_TYPE_CHAT, conv->account, channel_name.c_str());
-
-        // Put it back.
-        GlobalSignals::instance().on_conversation_created = std::move(f);
+        sigs.on_conversation_created = std::move(f);
     }
 
     //int id = purple_conv_chat_get_id(PURPLE_CONV_CHAT(conv));
@@ -111,32 +122,46 @@ ChannelView::ChannelView(const std::shared_ptr<Room>& room, Channel& channel)
 
     _gtkconv = PIDGIN_CONVERSATION(_conv);
 
-    g_signal_connect(G_OBJECT(_gtkconv->entry), "focus-in-event",
-                     G_CALLBACK(entry_focus_cb), this);
-    g_signal_connect(G_OBJECT(_gtkconv->entry), "focus-out-event",
-                     G_CALLBACK(entry_nofocus_cb), this);
+    focus_in_signal_id
+        = g_signal_connect(G_OBJECT(_gtkconv->entry), "focus-in-event",
+                           G_CALLBACK(entry_focus_cb), this);
+
+    focus_out_signal_id
+        = g_signal_connect(G_OBJECT(_gtkconv->entry), "focus-out-event",
+                           G_CALLBACK(entry_nofocus_cb), this);
 
     auto content = gtk_widget_get_parent(_gtkconv->lower_hbox);
 
     const gint output_window_position = 2;
 
-    auto target = util::gtk::get_nth_child(output_window_position, GTK_CONTAINER(content));
+    _target = util::gtk::get_nth_child(output_window_position, GTK_CONTAINER(content));
 
-    assert(GTK_IS_PANED(target));
+    assert(GTK_IS_PANED(_target));
 
-    if (!target) {
-        assert(target);
+    if (!_target) {
+        assert(_target);
         return;
     }
 
-    auto userlist = gtk_paned_get_child2(GTK_PANED(target));
+    _userlist = gtk_paned_get_child2(GTK_PANED(_target));
+    g_object_ref_sink(_userlist);
 
-    gtk_container_remove(GTK_CONTAINER(target), userlist);
+    gtk_container_remove(GTK_CONTAINER(_target), _userlist);
 
-    gtk_paned_pack2(GTK_PANED(target), _user_list.root_widget(), TRUE, TRUE);
+    _vbox = gtk_vbox_new(TRUE, 0);
 
-    // TODO: Not sure why the value of 1 gives a good result
-    gtk_widget_set_size_request(_user_list.root_widget(), 1, -1);
+    gtk_box_pack_start(GTK_BOX(_vbox), _joined_users.root_widget(), TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(_vbox), _invited_users.root_widget(), TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(_vbox), _other_users.root_widget(), TRUE, TRUE, 0);
+
+    gtk_paned_pack2(GTK_PANED(_target), _vbox, FALSE, TRUE);
+    gtk_widget_show(_vbox);
+
+    {
+        gint width, height;
+        gtk_widget_get_size_request(_userlist, &width, &height);
+        gtk_widget_set_size_request(_vbox, width, height);
+    }
 
     set_channel_view(_conv, this);
 }
@@ -144,21 +169,37 @@ ChannelView::ChannelView(const std::shared_ptr<Room>& room, Channel& channel)
 inline
 ChannelView::~ChannelView()
 {
-    assert(_channel);
-    assert(_channel->_channel_page == this);
+    g_signal_handler_disconnect(G_OBJECT(_gtkconv->entry), focus_in_signal_id);
+    g_signal_handler_disconnect(G_OBJECT(_gtkconv->entry), focus_out_signal_id);
 
-    if (get_channel_view(_conv)) {
-        set_channel_view(_conv, nullptr);
-        purple_conversation_destroy(_conv);
+    gtk_container_remove(GTK_CONTAINER(_target), _vbox);
+    gtk_paned_pack2(GTK_PANED(_target), _userlist, FALSE, TRUE);
+    g_object_unref(_userlist);
+
+    if (_channel) {
+        assert(!_channel->_channel_view || _channel->_channel_view == this);
     }
 
-    _channel->_channel_page = nullptr;
+    if (!purple_conversation_destroyed) {
+        purple_conversation_destroyed = true;
 
-    purple_conversation_set_data(_conv, "np1sec_channel_view", nullptr);
+        auto& sigs = GlobalSignals::instance();
+
+        auto f = std::move(sigs.on_conversation_deleted);
+        purple_conversation_destroy(_conv);
+        sigs.on_conversation_deleted = std::move(f);
+    }
 
     // TODO: Is this necessary?
     if (_room->focused_channel() == this) {
         _room->set_channel_focus(nullptr);
+    }
+
+    set_channel_view(_conv, nullptr);
+
+    if (_channel) {
+        _channel->_channel_view = nullptr;
+        _channel->self_destruct();
     }
 }
 

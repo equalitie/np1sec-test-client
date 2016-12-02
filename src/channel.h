@@ -68,6 +68,8 @@ public:
     void send_chat_message(const std::string&);
     void invite(const std::string&, const PublicKey&);
 
+    void self_destruct();
+
 public:
     void user_invited(const std::string& inviter, const std::string& invitee) override;
     void invitation_cancelled(const std::string& inviter, const std::string& invitee) override;
@@ -107,8 +109,7 @@ private:
     Room& _room;
     std::map<std::string, std::unique_ptr<User>> _users;
 
-    // Is non null iff we've joined the channel.
-    ChannelView* _channel_page = nullptr;
+    ChannelView* _channel_view;
 };
 
 } // np1sec_plugin namespace
@@ -127,9 +128,8 @@ namespace np1sec_plugin {
 inline Channel::Channel(np1sec::Conversation* delegate, Room& room)
     : _delegate(delegate)
     , _room(room)
+    , _channel_view(new ChannelView(_room.shared_from_this(), *this))
 {
-    _channel_page = new ChannelView(_room.shared_from_this(), *this);
-
     auto participants = _delegate->participants();
     auto invitees     = _delegate->invitees();
 
@@ -142,23 +142,18 @@ inline Channel::Channel(np1sec::Conversation* delegate, Room& room)
 
         u.update_view();
     }
-
-    //_view.on_double_click = [this] {
-    //    /**
-    //     * Switching channels currently causes assertion in the np1sec
-    //     * library.
-    //     */
-    //    //if (_room.find_user_in_channel(_room.username())) {
-    //    //    inform("Already in a channel");
-    //    //    return;
-    //    //}
-    //    //_room.join_channel(_delegate);
-    //};
 }
 
 inline Channel::~Channel()
 {
-    delete _channel_page;
+    _users.clear();
+    _delegate->leave(true /* Don't want to receive the 'left' callback */);
+
+    if (_channel_view) {
+        _channel_view->reset_channel();
+    }
+
+    delete _channel_view;
 }
 
 inline
@@ -258,6 +253,17 @@ inline
 void Channel::invitation_cancelled(const std::string& inviter, const std::string& invitee)
 {
     inform("Channel::invitation_cancelled ", inviter, " ", invitee);
+    if (auto u = find_user(invitee)) {
+        if (_delegate->invitees().count(invitee) == 0) {
+            u->mark_as_not_invited();
+        }
+    }
+}
+
+inline
+void Channel::self_destruct()
+{
+    _room._channels.erase(_delegate);
 }
 
 inline User& Channel::add_user( const std::string& username
@@ -279,10 +285,6 @@ inline User& Channel::add_user( const std::string& username
     auto u = new User(*this, username, pubkey);
     auto i = _users.emplace(username, std::unique_ptr<User>(u));
 
-    if (_channel_page) {
-        u->bind_user_list(_channel_page->user_list());
-    }
-
     if (participants.count(username)) {
         u->mark_joined();
     }
@@ -303,13 +305,7 @@ inline void Channel::remove_user(const std::string& username)
     _users.erase(username);
 
     if (_users.empty()) {
-        // Self destruct.
-        _room._channels.erase(_delegate);
-        return;
-    }
-
-    for (auto& user : _users | boost::adaptors::map_values) {
-        user->un_authorized_by(username);
+        return self_destruct();
     }
 }
 
@@ -366,23 +362,13 @@ template<class... Args>
 inline
 void Channel::inform(Args&&... args)
 {
-    if (_channel_page) {
-        _channel_page->display(my_username(), util::inform_str(args...));
-    }
-    else {
-        _room.inform("Channel ", channel_id(), ": ", std::forward<Args>(args)...);
-    }
+    _channel_view->display(my_username(), util::inform_str(args...));
 }
 
 inline
 void Channel::message_received(const std::string& username, const std::string& message)
 {
-    /* TODO: Currently there is no way to tell np1sec to leave a channel
-     * but when the user closes his channel window the _channel_page is
-     * destroyed. So for now ignore received messages. */
-    if (!_channel_page) return;
-    assert(_channel_page);
-    _channel_page->display(username, message);
+    _channel_view->display(username, message);
 }
 
 inline

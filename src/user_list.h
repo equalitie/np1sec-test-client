@@ -31,7 +31,7 @@ public:
     class User;
 
 public:
-    UserList();
+    UserList(const std::string& label);
 
     UserList(UserList&&) = delete;
     UserList(const UserList&) = delete;
@@ -41,6 +41,8 @@ public:
     ~UserList();
 
     GtkWidget* root_widget() { return GTK_WIDGET(_tree_view); }
+
+    bool is_in(const User&) const;
 
 private:
     void setup_callbacks(GtkTreeView* tree_view);
@@ -109,7 +111,7 @@ private:
 //------------------------------------------------------------------------------
 // UserList implementation
 //------------------------------------------------------------------------------
-inline UserList::UserList()
+inline UserList::UserList(const std::string& label)
 {
     _tree_view = GTK_TREE_VIEW(gtk_tree_view_new());
     g_object_ref(_tree_view);
@@ -118,7 +120,7 @@ inline UserList::UserList()
 
     gtk_tree_view_insert_column_with_attributes( _tree_view
                                                , -1
-                                               , "Participants"
+                                               , label.c_str()
                                                , gtk_cell_renderer_text_new()
                                                , "text", User::COL_NAME
                                                , NULL);
@@ -127,6 +129,11 @@ inline UserList::UserList()
     gtk_tree_view_set_model(_tree_view, GTK_TREE_MODEL(_store));
 
     setup_callbacks(_tree_view);
+}
+
+inline bool UserList::is_in(const User& u) const
+{
+    return u._user_list == this;
 }
 
 inline UserList::~UserList()

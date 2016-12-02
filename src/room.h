@@ -163,9 +163,9 @@ Room::Room(PurpleConversation* conv)
     , _private_key(np1sec::PrivateKey::generate(true))
     , _toolbar(new Toolbar(PIDGIN_CONVERSATION(conv)))
 {
-    //_toolbar->add_button("Create conversation", [this] {
-    //    _room->create_conversation();
-    //});
+    _toolbar->add_button("Create conversation", [this] {
+        _room->create_conversation();
+    });
 }
 
 inline
@@ -216,14 +216,6 @@ void Room::send_chat_message(const std::string& message)
     }
 
     channel_view->send_chat_message(message);
-    //auto* u = find_user_in_channel(_username);
-
-    //inform("TODO: Room::send_chat_message");
-    //if (!u || !u->in_chat()) {
-    //    return channel_view->inform("Not in chat");
-    //}
-
-    //_room->send_chat(message);
 }
 
 inline

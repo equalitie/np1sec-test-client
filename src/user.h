@@ -44,13 +44,11 @@ public:
 
 public:
     const PublicKey& public_key() const { return _public_key; }
-    const std::set<std::string>& authorized_by() const { return _authorized_by; }
 
-    void authorized_by(std::string name);
-    void un_authorized_by(std::string name);
     void mark_joined();
     void mark_in_chat();
     void mark_as_invited();
+    void mark_as_not_invited();
 
     void update_view();
 
@@ -58,16 +56,23 @@ public:
 
     void bind_user_list(UserList&);
 
+    void insert_into(UserList& list);
+
+    bool has_joined() const;
+    bool is_invited() const;
+
+private:
+    UserList& joined_list() const;
+    UserList& invited_list() const;
+    UserList& other_list() const;
+
 private:
     std::string _name;
     PublicKey _public_key;
     Channel& _channel;
     bool _is_myself;
-    bool _has_joined = false;
     bool _is_in_chat = false;
-    bool _is_invited = false;
-    std::set<std::string> _authorized_by;
-    UserList::User _view_in_channel;
+    std::unique_ptr<UserList::User> _view;
 };
 
 } // np1sec_plugin namespace
@@ -75,6 +80,7 @@ private:
 #include "channel.h"
 #include "user_info_dialog.h"
 #include "room_view.h"
+#include "channel_view.h"
 
 namespace np1sec_plugin {
 //------------------------------------------------------------------------------
@@ -86,8 +92,9 @@ User::User(Channel& channel, const std::string& name, const PublicKey& pubkey)
     , _public_key(pubkey)
     , _channel(channel)
     , _is_myself(name == channel._room.username())
-    , _authorized_by({name})
 {
+    insert_into(other_list());
+
     //_view_in_room.popup_actions["Info"] = [this] {
     //    auto gtk_window = _channel._room.gtk_window();
     //    UserInfoDialog::show(gtk_window, *this);
@@ -96,65 +103,58 @@ User::User(Channel& channel, const std::string& name, const PublicKey& pubkey)
     update_view();
 }
 
-inline
-void User::bind_user_list(UserList& user_list)
+inline void User::insert_into(UserList& list)
 {
-    _view_in_channel.bind(user_list);
+    _view.reset(new UserList::User());
+    _view->bind(list);
     update_view();
 }
 
 inline void User::update_view()
 {
+    if (!_view) return;
+
     auto name = _name;
 
-    bool can_invite = !_is_invited && !_has_joined && !_is_in_chat;
+    bool can_invite = !is_invited() && !has_joined() && !_is_in_chat;
 
-    _view_in_channel.popup_actions.clear();
+    _view->popup_actions.clear();
 
     if (can_invite) {
         auto invite = [this] {
             _channel.invite(_name, _public_key);
         };
 
-        _view_in_channel.popup_actions["Invite"] = invite;
+        _view->popup_actions["Invite"] = invite;
     }
 
-    if (_is_myself && _is_invited && !_has_joined && !_is_in_chat) {
-        _view_in_channel.popup_actions["Join"] = [this] {
+    if (_is_myself && is_invited() && !has_joined() && !_is_in_chat) {
+        _view->popup_actions["Join"] = [this] {
             _channel._delegate->join();
         };
-    }
-
-    if (_has_joined) {
-        name += " j";
     }
 
     if (_is_in_chat) {
         name += " c";
     }
 
-    if (_is_invited && !_has_joined && !_is_in_chat) {
-        name += " i";
-    }
-
-    _view_in_channel.set_text(name);
+    _view->set_text(name);
 }
 
-inline void User::authorized_by(std::string name)
+inline bool User::has_joined() const
 {
-    _authorized_by.insert(name);
-    update_view();
+    if (!_view) return false;
+    return joined_list().is_in(*_view);
 }
 
-inline void User::un_authorized_by(std::string name)
+inline bool User::is_invited() const
 {
-    _authorized_by.erase(name);
-    update_view();
+    if (!_view) return false;
+    return invited_list().is_in(*_view);
 }
 
 inline void User::mark_joined() {
-    _has_joined = true;
-    update_view();
+    insert_into(joined_list());
 }
 
 inline void User::mark_in_chat() {
@@ -162,9 +162,18 @@ inline void User::mark_in_chat() {
     update_view();
 }
 
-inline void User::mark_as_invited() {
-    _is_invited = true;
+inline void User::mark_as_not_invited() {
+    insert_into(other_list());
     update_view();
 }
+
+inline void User::mark_as_invited() {
+    insert_into(invited_list());
+    update_view();
+}
+
+inline UserList& User::joined_list()  const { return _channel._channel_view->joined_user_list(); }
+inline UserList& User::invited_list() const { return _channel._channel_view->invited_user_list(); }
+inline UserList& User::other_list()   const { return _channel._channel_view->other_user_list(); }
 
 } // np1sec_plugin namespace

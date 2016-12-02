@@ -174,6 +174,10 @@ static void unapply_np1sec(PurpleConversation* conv)
         set_room(conv, nullptr);
     }
 
+    if (channel_view) {
+        channel_view->purple_conversation_destroyed = true;
+    }
+
     delete channel_view;
     delete room_view;
 }
