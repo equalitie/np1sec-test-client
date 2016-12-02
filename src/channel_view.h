@@ -39,7 +39,10 @@ public:
 
     UserList& user_list() { return _user_list; }
 
-    Channel& channel() { return _channel; }
+    Channel* channel() { return _channel; }
+    void reset_channel() { _channel = nullptr; }
+
+    void send_chat_message(const std::string&);
 
 private:
     static gboolean
@@ -50,7 +53,7 @@ private:
 
 private:
     std::shared_ptr<Room> _room;
-    Channel& _channel;
+    Channel* _channel;
     PurpleConversation* _conv;
     PidginConversation* _gtkconv;
 
@@ -72,16 +75,20 @@ inline ChannelView* get_channel_view(PurpleConversation* conv) {
 }
 
 inline void set_channel_view(PurpleConversation* conv, ChannelView* cv) {
-    if (auto p = get_channel_view(conv)) {
-        delete p;
-    }
     purple_conversation_set_data(conv, "np1sec_channel_view", cv);
+}
+
+inline
+void ChannelView::send_chat_message(const std::string& msg)
+{
+    assert(_channel);
+    _channel->send_chat_message(msg);
 }
 
 inline
 ChannelView::ChannelView(const std::shared_ptr<Room>& room, Channel& channel)
     : _room(room)
-    , _channel(channel)
+    , _channel(&channel)
 {
     assert(_room->get_view());
     auto conv = _room->get_view()->purple_conv();
@@ -137,8 +144,15 @@ ChannelView::ChannelView(const std::shared_ptr<Room>& room, Channel& channel)
 inline
 ChannelView::~ChannelView()
 {
-    assert(_channel._channel_page == this);
-    _channel._channel_page = nullptr;
+    assert(_channel);
+    assert(_channel->_channel_page == this);
+
+    if (get_channel_view(_conv)) {
+        set_channel_view(_conv, nullptr);
+        purple_conversation_destroy(_conv);
+    }
+
+    _channel->_channel_page = nullptr;
 
     purple_conversation_set_data(_conv, "np1sec_channel_view", nullptr);
 
@@ -152,7 +166,8 @@ template<class... Args>
 inline
 void ChannelView::inform(Args&&... args)
 {
-    display(_channel.my_username(), util::inform_str(args...));
+    assert(_channel);
+    display(_channel->my_username(), util::inform_str(args...));
 }
 
 inline

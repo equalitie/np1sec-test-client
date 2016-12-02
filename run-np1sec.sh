@@ -6,6 +6,12 @@
 
 set -e
 
+NPROC=1
+
+if [ "$(expr substr $(uname -s) 1 5)" = "Linux" ]; then
+	NPROC=`nproc`
+fi
+
 testheader() {
 	RETURN=0
 	echo "#include <$1>\nmain(){}" > conftest.c
@@ -64,21 +70,26 @@ if [ -n "${DEPS}" ]; then
 	echo "Ignoring missing dependencies."
 fi
 
-
+PIDGIN_TAR_FILE=pidgin-2.11.0.tar.bz2
 
 if [ ! -x bin/bin/pidgin ]; then
-	rm -rf pidgin-build pidgin-2.11.0 pidgin-2.11.0.tar.bz2
-	wget http://sourceforge.net/projects/pidgin/files/Pidgin/2.11.0/pidgin-2.11.0.tar.bz2
-	tar xfj pidgin-2.11.0.tar.bz2
+	rm -rf pidgin-build pidgin-2.11.0
+	if [ ! -f ${PIDGIN_TAR_FILE} ]; then
+		wget http://sourceforge.net/projects/pidgin/files/Pidgin/2.11.0/${PIDGIN_TAR_FILE}
+	fi
+	tar xfj ${PIDGIN_TAR_FILE}
 	mkdir pidgin-build
 	cd pidgin-build
-	../pidgin-2.11.0/configure --disable-missing-dependencies --disable-consoleui --with-dynamic-prpls=jabber --prefix="${WORKDIR}"/bin
-	make ${MAKEOPTS}
+	../pidgin-2.11.0/configure --disable-missing-dependencies \
+	                           --disable-consoleui \
+	                           --with-dynamic-prpls=jabber \
+	                           --prefix="${WORKDIR}"/bin
+	make -j ${NPROC} ${MAKEOPTS}
 	make install
 	cd ..
 fi
 
-NP1SEC_BRANCH=master
+NP1SEC_BRANCH=invites
 if [ ! -d np1sec ]; then
 	rm -rf np1sec np1sec-build bin/"`libdir`"/"`libname np1sec`"
 	git clone https://github.com/equalitie/np1sec.git np1sec
@@ -88,7 +99,7 @@ if [ ! -d np1sec ]; then
 	mkdir np1sec-build
 	cd np1sec-build
 	cmake ../np1sec -DCMAKE_INSTALL_PREFIX="${WORKDIR}"/bin -DBUILD_TESTS=Off
-	make ${MAKEOPTS}
+	make -j ${NPROC} ${MAKEOPTS}
 	cp "`libname np1sec`" ../bin/"`libdir`"/
 	cd ..
 else
@@ -99,13 +110,13 @@ else
 		git pull origin "${NP1SEC_BRANCH}"
 		cd ..
 		cd np1sec-build
-		make ${MAKEOPTS}
+		make -j ${NPROC} ${MAKEOPTS}
 		cp "`libname np1sec`" ../bin/"`libdir`"/
 	fi
 	cd ..
 fi
 
-NP1SEC_TEST_CLIENT_BRANCH=master
+NP1SEC_TEST_CLIENT_BRANCH=invite
 if [ ! -d np1sec-test-client ]; then
 	rm -rf np1sec-test-client np1sec-test-client-build
 	git clone https://github.com/equalitie/np1sec-test-client.git np1sec-test-client
@@ -121,7 +132,7 @@ if [ ! -d np1sec-test-client ]; then
 else
 	cd np1sec-test-client
 	git remote update
-	if [ `git rev-parse @` != `git rev-parse origin"${NP1SEC_TEST_CLIENT_BRANCH}"` -o ! -e ../bin/"`libname np1sec-plugin`" ]; then
+	if [ `git rev-parse @` != `git rev-parse origin/"${NP1SEC_TEST_CLIENT_BRANCH}"` -o ! -e ../bin/"`libname np1sec-plugin`" ]; then
 		git checkout "${NP1SEC_TEST_CLIENT_BRANCH}"
 		git pull origin "${NP1SEC_TEST_CLIENT_BRANCH}"
 		cd ..

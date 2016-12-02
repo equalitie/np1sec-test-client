@@ -20,6 +20,7 @@
 
 #include <memory>
 #include <iostream>
+#include <queue>
 
 /* Np1sec headers */
 #include "src/interface.h"
@@ -33,6 +34,8 @@
 #   include "debug_proxy.h"
 #endif
 
+#include "user_list.h"
+
 namespace np1sec_plugin {
 
 class Channel;
@@ -42,6 +45,8 @@ class RoomView;
 
 struct Room final : private np1sec::RoomInterface
                   , public std::enable_shared_from_this<Room> {
+    using PublicKey = np1sec::PublicKey;
+
 #ifndef _NDEBUG
     using Np1SecRoom = DebugProxy;
 #else
@@ -50,6 +55,7 @@ struct Room final : private np1sec::RoomInterface
 
 public:
     Room(PurpleConversation* conv);
+    ~Room();
 
     void start();
     bool started() const { return _room.get(); }
@@ -67,16 +73,13 @@ public:
     void user_left(const std::string&);
 
     GtkWindow* gtk_window() const;
-    //PurpleConversation* purple_conv() const { return _conv; }
-
-    void authorize(const std::string& name) { _room->authorize(name); }
-
-    void join_channel(np1sec::Channel*);
 
     void set_channel_focus(ChannelView*);
     ChannelView* focused_channel() const;
 
     std::string room_name() const;
+
+    void close_all_channels();
 
 private:
     void display(const std::string& message);
@@ -87,10 +90,16 @@ private:
      */
     void send_message(const std::string& message) override;
     np1sec::TimerToken* set_timer(uint32_t interval_ms, np1sec::TimerCallback* callback) override;
-    np1sec::ChannelInterface* new_channel(np1sec::Channel* channel) override;
-    void channel_removed(np1sec::Channel* channel) override;
-    void joined_channel(np1sec::Channel* channel) override;
+
+
+    void connected() override;
     void disconnected() override;
+
+    void user_joined(const std::string& username, const PublicKey&) override;
+    void user_left(const std::string& username, const PublicKey&) override;
+
+    np1sec::ConversationInterface* created_conversation(np1sec::Conversation*) override;
+    np1sec::ConversationInterface* invited_to_conversation(np1sec::Conversation*, const std::string&) override;
 
     /*
      * Internal
@@ -100,11 +109,13 @@ private:
 
     bool interpret_as_command(const std::string&);
     User* find_user_in_channel(const std::string& username);
+    void add_user(const std::string& username, const PublicKey&);
+    void remove_user(const std::string& username);
 
 private:
     friend class Channel;
 
-    using ChannelMap = std::map<np1sec::Channel*, std::unique_ptr<Channel>>;
+    using ChannelMap = std::map<np1sec::Conversation*, std::unique_ptr<Channel>>;
 
     PurpleConversation *_conv;
     std::string _username;
@@ -113,12 +124,25 @@ private:
 
     RoomView* _room_view = nullptr;
     ChannelMap _channels;
+    std::map<std::string, std::unique_ptr<UserList::User>> _users;
 
     std::unique_ptr<Toolbar> _toolbar;
 
     std::unique_ptr<Np1SecRoom> _room;
 
     ChannelView* _focused_channel = nullptr;
+
+    struct Invitee {
+        std::string name;
+        PublicKey public_key;
+
+        bool operator<(const Invitee& other) const {
+            return std::tie(name, public_key)
+                 < std::tie(other.name, other.public_key);
+        }
+    };
+
+    std::queue<std::set<Invitee>> _invite_queue;
 };
 
 } // np1sec_plugin namespace
@@ -136,13 +160,12 @@ inline
 Room::Room(PurpleConversation* conv)
     : _conv(conv)
     , _username(sanitize_name(conv->account->username))
-    , _private_key(np1sec::PrivateKey::generate())
+    , _private_key(np1sec::PrivateKey::generate(true))
     , _toolbar(new Toolbar(PIDGIN_CONVERSATION(conv)))
 {
-    _toolbar->add_button("Create channel", [this] {
-        _room->create_channel();
-        _toolbar->remove_button("Create channel");
-    });
+    //_toolbar->add_button("Create conversation", [this] {
+    //    _room->create_conversation();
+    //});
 }
 
 inline
@@ -151,8 +174,7 @@ void Room::start()
     if (started()) return;
 
     _room.reset(new Np1SecRoom(this, _username, _private_key));
-
-    _room->search_channels();
+    _room->connect();
 }
 
 inline
@@ -167,17 +189,25 @@ User* Room::find_user_in_channel(const std::string& username)
 }
 
 inline
+Room::~Room()
+{
+}
+
+inline
+void Room::close_all_channels()
+{
+    _channels.clear();
+}
+
+inline
 void Room::send_chat_message(const std::string& message)
 {
-    if (interpret_as_command(message)) {
-        return;
-    }
-
-    auto* u = find_user_in_channel(_username);
-
     auto channel_view = focused_channel();
 
     if (!channel_view) {
+        if (interpret_as_command(message)) {
+            return;
+        }
         /*
          * We're sending from the main room (not a channel).
          * So send as plain text
@@ -185,17 +215,15 @@ void Room::send_chat_message(const std::string& message)
         return send_message(message);
     }
 
-    if (!u || !u->in_chat()) {
-        return channel_view->inform("Not in chat");
-    }
+    channel_view->send_chat_message(message);
+    //auto* u = find_user_in_channel(_username);
 
-    _room->send_chat(message);
-}
+    //inform("TODO: Room::send_chat_message");
+    //if (!u || !u->in_chat()) {
+    //    return channel_view->inform("Not in chat");
+    //}
 
-inline
-void Room::user_left(const std::string& user)
-{
-    _room->user_left(user);
+    //_room->send_chat(message);
 }
 
 inline
@@ -219,39 +247,13 @@ bool Room::interpret_as_command(const std::string& cmd)
                    "Available commands:<br>"
                    "&nbsp;&nbsp;&nbsp;&nbsp;help<br>"
                    "&nbsp;&nbsp;&nbsp;&nbsp;whoami<br>"
-                   "&nbsp;&nbsp;&nbsp;&nbsp;search-channels<br>"
-                   "&nbsp;&nbsp;&nbsp;&nbsp;create-channel<br>"
-                   "&nbsp;&nbsp;&nbsp;&nbsp;authorize &lt;user&gt;<br>"
-                   "&nbsp;&nbsp;&nbsp;&nbsp;join-channel &lt;channel-id&gt;<br>");
+                   "&nbsp;&nbsp;&nbsp;&nbsp;create-conversation<br>");
         }
         else if (c == "whoami") {
             inform("You're ", _username);
         }
-        else if (c == "search-channels") {
-            _room->search_channels();
-        }
-        else if (c == "authorize") {
-            auto user = p.read_word();
-            authorize(user);
-        }
-        else if (c == "create-channel") {
-            _room->create_channel();
-        }
-        else if (c == "join-channel") {
-            auto channel_id_str = p.read_word();
-            np1sec::Channel* channel = nullptr;
-            try {
-                channel = reinterpret_cast<np1sec::Channel*>(std::stoi(channel_id_str));
-
-                if (_channels.count(channel) == 0) {
-                    throw std::exception();
-                }
-            } catch(...) {
-                inform("Channel id \"", channel_id_str, "\" not found");
-                return true;
-            }
-            inform("joining channel ", channel, " ", channel_id_str);
-            join_channel(channel);
+        else if (c == "create-conversation") {
+            _room->create_conversation();
         }
         else  {
             inform("\"", p.text, "\" is not a valid np1sec command");
@@ -263,26 +265,6 @@ bool Room::interpret_as_command(const std::string& cmd)
     }
 
     return true;
-}
-
-inline
-void Room::join_channel(np1sec::Channel* channel)
-{
-    auto ch_i = _channels.find(channel);
-
-    if (ch_i == _channels.end()) {
-        assert(0 && "Trying to join a non existent channel");
-        return;
-    }
-
-    auto& ch = *ch_i->second;
-
-    if (ch.find_user(_username)) {
-        inform("Already in that channel");
-        return;
-    }
-
-    _room->join_channel(channel);
 }
 
 inline
@@ -309,53 +291,124 @@ void Room::send_message(const std::string& message)
 }
 
 inline
-np1sec::ChannelInterface*
-Room::new_channel(np1sec::Channel* channel)
+void Room::add_user(const std::string& username, const PublicKey& pubkey)
 {
-    inform("Room::new_channel(", size_t(channel),
-           ") with participants: ", channel->users());
-
-    if (_channels.count(channel) != 0) {
-        assert(0 && "Channel already present");
-        return nullptr;
-    }
-
-    auto result = _channels.emplace(channel, std::make_unique<Channel>(channel, *this));
-    return result.first->second.get();
-}
-
-inline
-void Room::channel_removed(np1sec::Channel* channel)
-{
-    _channels.erase(channel);
-}
-
-inline
-void Room::joined_channel(np1sec::Channel* channel)
-{
-    inform("Room::joined_channel ", size_t(channel));
-
-    auto channel_i = _channels.find(channel);
-
-    if (channel_i == _channels.end()) {
-        assert(0 && "Joined a non existent channel");
+    if (_users.count(username)) {
+        assert(0 && "User is already in the room");
         return;
     }
 
-    auto& ch = *channel_i->second;
-    ch.set_user_public_key(_username, _private_key.public_key());
+    auto u = new UserList::User();
 
-    ch.mark_as_joined();
-
-    if (channel->in_chat()) {
-        ch.joined_chat();
+    if (auto v = get_view()) {
+        u->bind(v->user_list());
     }
+
+    _users[username] = std::unique_ptr<UserList::User>(u);
+
+    if (username == _username) {
+        u->set_text(username + " (self)");
+    }
+    else {
+        u->set_text(username);
+
+        u->popup_actions["Invite"] = [this, username, pubkey] {
+            _invite_queue.emplace(std::set<Invitee>{Invitee{username, pubkey}});
+            _room->create_conversation();
+        };
+    }
+
+    for (auto& c : _channels | boost::adaptors::map_values) {
+        c->add_user(username, pubkey);
+    }
+}
+
+inline
+void Room::user_joined(const std::string& username, const PublicKey& pubkey)
+{
+    inform("Room::user_joined ", username);
+    add_user(username, pubkey);
+}
+
+inline
+void Room::remove_user(const std::string& username)
+{
+    _users.erase(username);
+
+    for (auto& c : _channels | boost::adaptors::map_values) {
+        c->remove_user(username);
+    }
+}
+
+inline
+void Room::user_left(const std::string& username, const PublicKey&)
+{
+    inform("Room::user_left ", username, " (event from np1sec)");
+    remove_user(username);
+}
+
+inline
+void Room::user_left(const std::string& username)
+{
+    inform("Room::user_left ", username, " (event from pidgin)");
+    _room->user_left(username);
+    remove_user(username);
+}
+
+inline
+np1sec::ConversationInterface*
+Room::created_conversation(np1sec::Conversation* c)
+{
+    inform("Room::created_conversation ", size_t(c));
+
+    if (_channels.count(c) != 0) {
+        assert(0 && "Conversation already present");
+        return nullptr;
+    }
+
+    auto channel = new Channel(c, *this);
+    _channels.emplace(c, std::unique_ptr<Channel>(channel));
+
+    if (!_invite_queue.empty()) {
+        auto invitees = std::move(_invite_queue.front());
+        _invite_queue.pop();
+
+        for (const auto& invitee : invitees) {
+            channel->invite(invitee.name, invitee.public_key);
+        }
+    }
+
+    return channel;
+}
+
+inline
+np1sec::ConversationInterface*
+Room::invited_to_conversation(np1sec::Conversation* c, const std::string& by)
+{
+    inform("Room::invited_to_conversation by ", by);
+
+    if (_channels.count(c) != 0) {
+        assert(0 && "Conversation already present");
+        return nullptr;
+    }
+
+    auto p = new Channel(c, *this);
+    _channels.emplace(c, std::unique_ptr<Channel>(p));
+    return p;
+}
+
+inline
+void Room::connected()
+{
+    inform("Room::connected()");
+    add_user(_username, _private_key.public_key());
 }
 
 inline
 void Room::disconnected()
 {
     inform("Room::disconnected()");
+    _users.erase(_username);
 }
 
 template<class... Args>

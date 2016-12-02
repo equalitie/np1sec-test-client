@@ -25,10 +25,10 @@
 
 /* np1sec headers */
 #include "src/crypto.h"
-#include "src/channel.h"
+#include "src/conversation.h"
 
 /* np1sec_plugin headers */
-#include "channel_list.h"
+#include "user_list.h"
 
 namespace np1sec_plugin {
 
@@ -37,11 +37,11 @@ class User;
 class ChannelPage;
 class ChannelView;
 
-class Channel final : public np1sec::ChannelInterface {
+class Channel final : public np1sec::ConversationInterface {
     using PublicKey = np1sec::PublicKey;
 
 public:
-    Channel(np1sec::Channel*, Room&);
+    Channel(np1sec::Conversation*, Room&);
     ~Channel();
 
     Channel(const Channel&) = delete;
@@ -53,67 +53,36 @@ public:
     /*
      * Internal
      */
-    User& add_member(const std::string&);
+    User& add_user(const std::string&, const PublicKey&);
+    void remove_user(const std::string&);
     void set_user_public_key(const std::string& username, const PublicKey&);
-    void promote_user(const std::string& username);
+    //void promote_user(const std::string& username);
     User* find_user(const std::string&);
     const User* find_user(const std::string&) const;
     size_t size() const { return _users.size(); }
     const std::string& my_username() const;
-    bool user_in_chat(const std::string&) const;
+    //bool user_in_chat(const std::string&) const;
     void mark_as_joined();
     std::string channel_name() const;
 
+    void send_chat_message(const std::string&);
+    void invite(const std::string&, const PublicKey&);
+
 public:
-    /*
-     * A user joined this channel. No cryptographic identity is known yet.
-     */
-    void user_joined(const std::string& username) override;
-
-    /*
-     * A user left the channel.
-     */
-    void user_left(const std::string& username) override;
-
-    /*
-     * The cryptographic identity of a user was confirmed.
-     */
+    void user_invited(const std::string& inviter, const std::string& invitee) override;
+    void invitation_cancelled(const std::string& inviter, const std::string& invitee) override;
     void user_authenticated(const std::string& username, const PublicKey& public_key) override;
-
-    /*
-     * A user failed to authenticate. This indicates an attack!
-     */
     void user_authentication_failed(const std::string& username) override;
-
-    /*
-     * A user <authenticatee> was accepted into the channel by a user <authenticator>.
-     */
-    void user_authorized_by(const std::string& user, const std::string& target) override;
-
-    /*
-     * A user got authorized by all participants and is now a full participant.
-     */
-    void user_promoted(const std::string& username) override;
-
-
-    /*
-     * You joined this channel.
-     */
-    void joined() override;
-
-    /*
-     * You got authorized by all participants and are now a full participant.
-     */
-    void authorized() override;
-
-
-    /*
-     * Not implemented yet.
-     */
-    void message_received(const std::string& username, const std::string& message) override;
-
+    void user_joined(const std::string& username) override;
+    void user_left(const std::string& username) override;
+    void votekick_registered(const std::string& kicker, const std::string& victim, bool kicked) override;
+    
     void user_joined_chat(const std::string& username) override;
+    void message_received(const std::string& sender, const std::string& message) override;
+    
+    void joined() override;
     void joined_chat() override;
+    void left() override;
 
 private:
     /*
@@ -122,15 +91,20 @@ private:
     size_t channel_id() const { return size_t(_delegate); }
 
     template<class... Args> void inform(Args&&...);
+    void interpret_as_command(const std::string& msg);
+    std::map<std::string, PublicKey> get_users() const;
+    User& add_user(const std::string&,
+                   const PublicKey&,
+                   const std::set<std::string>& participants,
+                   const std::set<std::string>& invitees);
 
 private:
     friend class User;
     friend class ChannelView;
 
-    np1sec::Channel* _delegate;
+    np1sec::Conversation* _delegate;
 
     Room& _room;
-    ChannelList::Channel _view;
     std::map<std::string, std::unique_ptr<User>> _users;
 
     // Is non null iff we've joined the channel.
@@ -143,39 +117,122 @@ private:
 #include "room.h"
 #include "user.h"
 #include "channel_view.h"
+#include "parser.h"
 
 namespace np1sec_plugin {
 
 //------------------------------------------------------------------------------
 // Implementation
 //------------------------------------------------------------------------------
-inline Channel::Channel(np1sec::Channel* delegate, Room& room)
+inline Channel::Channel(np1sec::Conversation* delegate, Room& room)
     : _delegate(delegate)
     , _room(room)
-    , _view(_room.get_view()->channel_list(), channel_name())
 {
-    for (const auto& user : _delegate->users()) {
-        auto& u = add_member(user);
-        promote_user(user);
+    _channel_page = new ChannelView(_room.shared_from_this(), *this);
+
+    auto participants = _delegate->participants();
+    auto invitees     = _delegate->invitees();
+
+    for (const auto& username_and_key : get_users()) {
+
+        const auto& username = username_and_key.first;
+        const auto& key      = username_and_key.second;
+
+        auto& u = add_user(username, key, participants, invitees);
+
         u.update_view();
     }
 
-    _view.on_double_click = [this] {
-        /**
-         * Switching channels currently causes assertion in the np1sec
-         * library.
-         */
-        if (_room.find_user_in_channel(_room.username())) {
-            inform("Already in a channel");
-            return;
-        }
-        _room.join_channel(_delegate);
-    };
+    //_view.on_double_click = [this] {
+    //    /**
+    //     * Switching channels currently causes assertion in the np1sec
+    //     * library.
+    //     */
+    //    //if (_room.find_user_in_channel(_room.username())) {
+    //    //    inform("Already in a channel");
+    //    //    return;
+    //    //}
+    //    //_room.join_channel(_delegate);
+    //};
 }
 
 inline Channel::~Channel()
 {
-    //delete _channel_page;
+    delete _channel_page;
+}
+
+inline
+void Channel::send_chat_message(const std::string& msg)
+{
+    if (msg.substr(0, 1) == ".") {
+        return interpret_as_command(msg.substr(1));
+    }
+
+    if (!_delegate->in_chat()) {
+        return inform("You are currently not in the chat");
+    }
+
+    _delegate->send_chat(msg);
+}
+
+inline
+std::map<std::string, np1sec::PublicKey> Channel::get_users() const
+{
+    return _room._room->users();
+}
+
+inline
+void Channel::interpret_as_command(const std::string& cmd)
+{
+    using namespace std;
+
+    Parser p(cmd);
+
+    try {
+        inform("$ ", p.text);
+
+        auto c = p.read_word();
+
+        if (c == "help") {
+            inform("<br>"
+                   "Available commands:<br>"
+                   "&nbsp;&nbsp;&nbsp;&nbsp;help<br>"
+                   "&nbsp;&nbsp;&nbsp;&nbsp;whoami<br>"
+                   "&nbsp;&nbsp;&nbsp;&nbsp;list-users<br>");
+        }
+        else if (c == "whoami") {
+            inform("You're ", my_username());
+        }
+        else if (c == "list-users") {
+            inform("Users: ", util::collection(get_users() | boost::adaptors::map_keys));
+        }
+        else if (c == "list-participants") {
+            inform("Users: ", util::collection(_delegate->participants()));
+        }
+        else if (c == "invite") {
+            auto who = p.read_word();
+            auto users = get_users();
+            auto ui = users.find(who);
+
+            if (ui == users.end()) {
+                return inform("No such user \"", who, "\"");
+            }
+
+            invite(ui->first, ui->second);
+        } 
+        else if (c == "join") {
+            _delegate->join();
+        }
+        else  {
+            inform("\"", p.text, "\" is not a valid np1sec command");
+        }
+    }
+    catch (...) {}
+}
+
+inline
+void Channel::invite(const std::string& invitee, const PublicKey& pubkey) {
+    _delegate->invite(invitee, pubkey);
 }
 
 inline std::string Channel::channel_name() const
@@ -183,83 +240,66 @@ inline std::string Channel::channel_name() const
     return std::to_string(size_t(_delegate));
 }
 
-inline void Channel::mark_as_joined()
-{
-    assert(!_channel_page);
-    _channel_page = new ChannelView(_room.shared_from_this(), *this);
-
-    for (auto& user : _users | boost::adaptors::map_values) {
-        user->bind_user_list(_channel_page->user_list());
-    }
-}
-
 inline const std::string& Channel::my_username() const
 {
     return _room.username();
 }
 
-inline bool Channel::user_in_chat(const std::string& name) const
+inline
+void Channel::user_invited(const std::string& inviter, const std::string& invitee)
 {
-    return _delegate->user_in_chat(name);
+    inform("Channel::user_invited ", invitee, " by ", inviter);
+    if (auto u = find_user(invitee)) {
+        u->mark_as_invited();
+    }
 }
 
 inline
-void Channel::promote_user(const std::string& username)
+void Channel::invitation_cancelled(const std::string& inviter, const std::string& invitee)
 {
-    auto user = find_user(username);
-
-    if (!user) {
-        assert(0 && "Authorized user is not in the channel");
-        return;
-    }
-
-    user->set_promoted(true);
+    inform("Channel::invitation_cancelled ", inviter, " ", invitee);
 }
 
-inline
-void Channel::set_user_public_key(const std::string& username, const PublicKey& public_key)
+inline User& Channel::add_user( const std::string& username
+                              , const PublicKey& pubkey)
 {
-    auto user_i = _users.find(username);
-
-    if (user_i == _users.end()) {
-        assert(0 && "Authenticated user is not in the channel");
-        return;
-    }
-
-    user_i->second->public_key = public_key;
+    return add_user(username,
+                    pubkey,
+                    _delegate->participants(),
+                    _delegate->invitees());
 }
 
-inline User& Channel::add_member(const std::string& username)
+inline User& Channel::add_user( const std::string& username
+                              , const PublicKey& pubkey
+                              , const std::set<std::string>& participants
+                              , const std::set<std::string>& invitees)
 {
     assert(_users.count(username) == 0);
 
-    auto u = new User(*this, username);
+    auto u = new User(*this, username, pubkey);
     auto i = _users.emplace(username, std::unique_ptr<User>(u));
 
     if (_channel_page) {
         u->bind_user_list(_channel_page->user_list());
     }
 
+    if (participants.count(username)) {
+        u->mark_joined();
+    }
+
+    if (invitees.count(username)) {
+        u->mark_as_invited();
+    }
+
+    if (username == my_username() && _delegate->in_chat()) {
+        u->mark_in_chat();
+    }
+
     return *(i.first->second.get());
 }
 
-inline
-void Channel::user_joined(const std::string& username)
+inline void Channel::remove_user(const std::string& username)
 {
-    inform("Channel::user_joined(", channel_id(), ", ", username, ")");
-
-    for (const auto& user : _users | boost::adaptors::map_values) {
-        user->set_promoted(false);
-    }
-
-    auto& u = add_member(username);
-
-    u.set_promoted(false);
-}
-
-void Channel::user_left(const std::string& username)
-{
-    inform("Channel::user_left(", channel_id(), ", ", username, ")");
     _users.erase(username);
 
     if (_users.empty()) {
@@ -273,56 +313,68 @@ void Channel::user_left(const std::string& username)
     }
 }
 
-void Channel::user_authenticated(const std::string& username, const PublicKey& public_key)
+inline
+void Channel::user_joined(const std::string& username)
 {
-    inform("Channel::user_authenticated(", channel_id(), ", ", username, ")");
-    set_user_public_key(username, public_key);
-}
+    inform("Channel::user_joined(", username, ")");
 
-void Channel::user_authentication_failed(const std::string& username)
-{
-    inform("Channel::user_authentication_failed(", channel_id(), ", ", username, ")");
-}
+    auto ui = _users.find(username);
 
-void Channel::user_authorized_by(const std::string& user, const std::string& target)
-{
-    inform("Channel::user_authorized_by(", channel_id(), ", ", target, " by ", user, ")");
+    assert(ui != _users.end());
 
-    auto target_p = find_user(target);
-
-    if (!target_p || !find_user(user)) {
-        assert(0 && "Either target or user is not in this channel");
-        return;
+    if (ui == _users.end()) {
+        return inform("Unknown user \"", username, "\" joine channel");
     }
 
-    target_p->authorized_by(user);
+    ui->second->mark_joined();
 }
 
-void Channel::user_promoted(const std::string& username)
+inline
+void Channel::user_left(const std::string& username)
 {
-    inform("Channel::user_promoted(", channel_id(), ", ", username, ")");
-    promote_user(username);
+    inform("Channel::user_left(", username, ")");
+    remove_user(username);
 }
 
-void Channel::joined()
+inline
+void Channel::votekick_registered(const std::string& kicker, const std::string& victim, bool kicked)
 {
-    inform("Channel::joined(", channel_id(), ")");
+    inform("Channel::votekick_registered(", kicker, " ", victim, " ", kicked);
 }
 
-void Channel::authorized()
+inline
+void Channel::user_authenticated(const std::string& username, const PublicKey& public_key)
 {
-    inform("Channel::authorized(", channel_id(), ")");
+    inform("TODO: Channel::user_authenticated(", username, ")");
+    //set_user_public_key(username, public_key);
+}
+
+inline
+void Channel::user_authentication_failed(const std::string& username)
+{
+    inform("Channel::user_authentication_failed(", username, ")");
+}
+
+inline void Channel::joined()
+{
+    /* This function is a bit useless, it is called right after
+     * the 'user_joined(user == myself)` function. So everything
+     * necessary can be done there instead. */
 }
 
 template<class... Args>
+inline
 void Channel::inform(Args&&... args)
 {
     if (_channel_page) {
         _channel_page->display(my_username(), util::inform_str(args...));
     }
-    _room.inform(std::forward<Args>(args)...);
+    else {
+        _room.inform("Channel ", channel_id(), ": ", std::forward<Args>(args)...);
+    }
 }
 
+inline
 void Channel::message_received(const std::string& username, const std::string& message)
 {
     /* TODO: Currently there is no way to tell np1sec to leave a channel
@@ -333,27 +385,38 @@ void Channel::message_received(const std::string& username, const std::string& m
     _channel_page->display(username, message);
 }
 
+inline
 void Channel::user_joined_chat(const std::string& username)
 {
     inform("Channel::user_joined_chat(", username, ")");
     if (auto u = find_user(username)) {
-        u->update_view();
+        u->mark_in_chat();
     }
 }
 
+inline
 void Channel::joined_chat()
 {
     inform("Channel::joined_chat()");
-    /**
-     * There are properties of other users that this user couldn't have
-     * seen previously (e.g. whether they are in the chat), so we need to
-     * update everyone's view.
-     */
-    for (auto& u : _users | boost::adaptors::map_values) {
-        u->update_view();
+
+    /* Can't just mark myself as being in chat and call it a day because
+     * only now I can determine whether other participants are in
+     * chat or not. */
+    for (const auto& p : _delegate->participants()) {
+        auto u = find_user(p);
+        assert(u);
+        if (u && _delegate->participant_in_chat(p)) {
+            u->mark_in_chat();
+        }
     }
 }
 
+inline void Channel::left()
+{
+    inform("Channel::left()");
+}
+
+inline
 User* Channel::find_user(const std::string& user) {
     auto user_i = _users.find(user);
     if (user_i == _users.end()) return nullptr;

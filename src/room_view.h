@@ -24,7 +24,7 @@
 
 namespace np1sec_plugin {
 
-class ChannelList;
+class UserList;
 class ChannelView;
 class Room;
 
@@ -38,7 +38,7 @@ public:
     RoomView& operator=(const RoomView&) = delete;
     RoomView& operator=(RoomView&&) = delete;
 
-    ChannelList& channel_list();
+    UserList& user_list();
 
     PurpleConversation* purple_conv() { return _conv; }
 
@@ -48,7 +48,7 @@ private:
     PurpleConversation* _conv;
     PidginConversation* _gtkconv;
 
-    std::unique_ptr<ChannelList> _channel_list;
+    std::unique_ptr<UserList> _user_list;
 
     GtkWidget* _content;
     GtkWidget* _parent;
@@ -65,7 +65,7 @@ private:
 
 } // np1sec_plugin namespace
 
-#include "channel_list.h"
+#include "user_list.h"
 #include "room.h"
 
 namespace np1sec_plugin {
@@ -133,8 +133,8 @@ inline RoomView::RoomView(PurpleConversation* conv, const std::shared_ptr<Room>&
     gtk_paned_pack2(GTK_PANED(_target), _vpaned, TRUE, TRUE);
     gtk_paned_pack1(GTK_PANED(_vpaned), _userlist, TRUE, TRUE);
 
-    _channel_list.reset(new ChannelList());
-    gtk_paned_pack2(GTK_PANED(_vpaned), _channel_list->root_widget(), TRUE, TRUE);
+    _user_list.reset(new UserList());
+    gtk_paned_pack2(GTK_PANED(_vpaned), _user_list->root_widget(), TRUE, TRUE);
 
     // TODO: Not sure why the value of 1 gives a good result
     gtk_widget_set_size_request(_vpaned, 1, -1);
@@ -157,9 +157,9 @@ RoomView::~RoomView()
 }
 
 inline
-ChannelList& RoomView::channel_list()
+UserList& RoomView::user_list()
 {
-    return *_channel_list;
+    return *_user_list;
 }
 
 inline RoomView* get_room_view(PurpleConversation* conv) {

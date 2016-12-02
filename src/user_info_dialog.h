@@ -86,15 +86,10 @@ GtkWidget* UserInfoDialog::create_content(const User& user)
 
     append("Name: ", user.name());
 
-    if (user.public_key) {
-        append("Public key: ", user.public_key->dump_hex());
-    }
-    else {
-        append("Public key: ", "not yet known");
-    }
+    append("Public key: ", user.public_key().dump_hex());
 
     append("Authorized by: ", util::str(user.authorized_by()));
-    append("Promoted: ", user.was_promoted() ? "Yes" : "No");
+    //append("Promoted: ", user.was_promoted() ? "Yes" : "No");
 
     return vbox;
 }

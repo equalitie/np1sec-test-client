@@ -26,37 +26,45 @@
 #include <future>
 #include "defer.h"
 
+namespace np1sec_plugin {
+    namespace util {
+        namespace _detail {
+            template<class T> struct Collection { const T& value; };
+        } // _detail namespace
+
+        template<class T>
+        _detail::Collection<T> collection(const T& value) {
+            return _detail::Collection<T>{value};
+        }
+    }// util namespace
+} // np1sec_plugin namespace
+
 template<class T>
-std::ostream& operator<<(std::ostream& os, const std::set<T>& s) {
-    os << "{";
-    for (auto i = s.begin(); i != s.end(); ++i) {
-        if (i != s.begin()) os << ", ";
+std::ostream& operator<<(std::ostream& os, const np1sec_plugin::util::_detail::Collection<T>& c) {
+    const auto v = c.value;
+    for (auto i = begin(v); i != end(v); ++i) {
+        if (i != begin(v)) os << ", ";
         os << *i;
     }
-    os << "}";
     return os;
+}
+
+template<class T>
+std::ostream& operator<<(std::ostream& os, const std::set<T>& s) {
+    using namespace np1sec_plugin::util;
+    return os << "{" << collection(s) << "}";
 }
 
 template<class T>
 std::ostream& operator<<(std::ostream& os, const std::list<T>& s) {
-    os << "[";
-    for (auto i = s.begin(); i != s.end(); ++i) {
-        if (i != s.begin()) os << ", ";
-        os << *i;
-    }
-    os << "]";
-    return os;
+    using namespace np1sec_plugin::util;
+    return os << "[" << collection(s) << "]";
 }
 
 template<class T>
 std::ostream& operator<<(std::ostream& os, const std::vector<T>& s) {
-    os << "(";
-    for (auto i = s.begin(); i != s.end(); ++i) {
-        if (i != s.begin()) os << ", ";
-        os << *i;
-    }
-    os << ")";
-    return os;
+    using namespace np1sec_plugin::util;
+    return os << "(" << collection(s) << ")";
 }
 
 namespace np1sec_plugin {
@@ -71,6 +79,7 @@ namespace _detail {
         os << arg;
         stringify(os, std::forward<Args>(args)...);
     }
+
 }
 
 template<class... Args>
