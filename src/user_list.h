@@ -68,6 +68,7 @@ private:
     std::map<std::string, std::function<void(GdkEventButton*)>> _show_popup_callbacks;
 
     std::set<User*> _users;
+    std::set<gint> _signal_handlers;
 };
 
 //------------------------------------------------------------------------------
@@ -138,6 +139,10 @@ inline bool UserList::is_in(const User& u) const
 
 inline UserList::~UserList()
 {
+    for (auto h_id : _signal_handlers) {
+        g_signal_handler_disconnect(G_OBJECT(_tree_view), h_id);
+    }
+
     g_object_unref(_store);
     g_object_unref(_tree_view);
 
@@ -202,11 +207,14 @@ gboolean UserList::on_button_pressed( GtkWidget*
 inline
 void UserList::setup_callbacks(GtkTreeView* tree_view)
 {
-    g_signal_connect(GTK_WIDGET(tree_view), "row-activated",
-                     G_CALLBACK(on_double_click), this);
+    auto id1 = g_signal_connect(GTK_WIDGET(tree_view), "row-activated",
+                                G_CALLBACK(on_double_click), this);
 
-    g_signal_connect(G_OBJECT(tree_view), "button-press-event",
-                     (GCallback) on_button_pressed, this);
+    auto id2 = g_signal_connect(G_OBJECT(tree_view), "button-press-event",
+                                (GCallback) on_button_pressed, this);
+
+    _signal_handlers.insert(id1);
+    _signal_handlers.insert(id2);
 
     // // TODO: popup-menu
     // // http://scentric.net/tutorial/sec-selections-context-menus.html
