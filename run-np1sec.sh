@@ -76,7 +76,7 @@ PIDGIN_SHA256=f72613440586da3bdba6d58e718dce1b2c310adf8946de66d8077823e57b3333
 if [ ! -x bin/bin/pidgin ]; then
 	rm -rf pidgin-build pidgin-2.11.0
 	if [ ! -f ${PIDGIN_TAR_FILE} ]; then
-		wget http://sourceforge.net/projects/pidgin/files/Pidgin/2.11.0/${PIDGIN_TAR_FILE}
+		wget https://sourceforge.net/projects/pidgin/files/Pidgin/2.11.0/${PIDGIN_TAR_FILE}
 	fi
 	CHECKSUM=`sha256sum "${PIDGIN_TAR_FILE}" | awk '{ print $1; }'`
 	if [ "${PIDGIN_SHA256}" != "${CHECKSUM}" ]; then
