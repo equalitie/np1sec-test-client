@@ -70,6 +70,8 @@ public:
 
     void self_destruct();
 
+    ChannelView* channel_view() { return _channel_view; }
+
 public:
     void user_invited(const std::string& inviter, const std::string& invitee) override;
     void invitation_cancelled(const std::string& inviter, const std::string& invitee) override;

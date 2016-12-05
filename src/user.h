@@ -126,15 +126,19 @@ inline void User::update_view()
         };
 
         _view->popup_actions["Invite"] = invite;
+        _view->on_double_click = invite;
     }
 
     if (_is_myself && is_invited() && !has_joined() && !_is_in_chat) {
-        _view->popup_actions["Join"] = [this] {
+        auto join = [this] {
             _channel._delegate->join();
         };
+
+        _view->popup_actions["Join"] = join;
+        _view->on_double_click = join;
     }
 
-    if (_is_in_chat) {
+    if (has_joined() && !_is_in_chat) {
         name += " c";
     }
 

@@ -196,6 +196,9 @@ Room::~Room()
 inline
 void Room::close_all_channels()
 {
+    for (auto& c : _channels | boost::adaptors::map_values) {
+        c->channel_view()->purple_conversation_destroyed = true;
+    }
     _channels.clear();
 }
 
@@ -303,11 +306,14 @@ void Room::add_user(const std::string& username, const PublicKey& pubkey)
     }
     else {
         u->set_text(username);
-
-        u->popup_actions["Invite"] = [this, username, pubkey] {
+        
+        auto invite = [this, username, pubkey] {
             _invite_queue.emplace(std::set<Invitee>{Invitee{username, pubkey}});
             _room->create_conversation();
         };
+
+        u->popup_actions["Invite"] = invite;
+        u->on_double_click = invite;
     }
 
     for (auto& c : _channels | boost::adaptors::map_values) {
