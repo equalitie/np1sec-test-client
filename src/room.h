@@ -47,7 +47,7 @@ struct Room final : private np1sec::RoomInterface
                   , public std::enable_shared_from_this<Room> {
     using PublicKey = np1sec::PublicKey;
 
-#ifndef _NDEBUG
+#if false && !defined(_NDEBUG)
     using Np1SecRoom = DebugProxy;
 #else
     using Np1SecRoom = np1sec::Room;
