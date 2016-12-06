@@ -107,6 +107,7 @@ private:
     UserList* _user_list = nullptr;
     std::string _text;
     GtkTreeIter _iter;
+    std::shared_ptr<bool> _was_destroyed;
 };
 
 //------------------------------------------------------------------------------
@@ -226,6 +227,7 @@ void UserList::setup_callbacks(GtkTreeView* tree_view)
 // UserList::User Implementation
 //------------------------------------------------------------------------------
 inline UserList::User::User()
+    : _was_destroyed(std::make_shared<bool>(false))
 {
 }
 
@@ -249,11 +251,13 @@ inline void UserList::User::bind(UserList& list)
 
     auto p = path();
 
-    _user_list->_double_click_callbacks[p] = [this] {
+    _user_list->_double_click_callbacks[p] = [this, d = _was_destroyed] {
+        if (*d) return;
         if (on_double_click) on_double_click();
     };
 
-    _user_list->_show_popup_callbacks[p] = [this] (GdkEventButton* e) {
+    _user_list->_show_popup_callbacks[p] = [this, d = _was_destroyed] (GdkEventButton* e) {
+        if (*d) return;
         show_popup(e, popup_actions);
     };
 }
@@ -277,6 +281,7 @@ std::string UserList::User::path() const
 
 inline UserList::User::~User()
 {
+    *_was_destroyed = true;
     if (!_user_list) return;
     assert(_user_list->_users.count(this));
     _user_list->_users.erase(this);
