@@ -89,6 +89,8 @@ if [ ! -x bin/bin/pidgin ]; then
 	../pidgin-2.11.0/configure --disable-missing-dependencies \
 	                           --disable-consoleui \
 	                           --with-dynamic-prpls=jabber \
+	                           CFLAGS="-fsanitize=address -ggdb" \
+	                           CXXFLAGS="-fsanitize=address -ggdb" \
 	                           --prefix="${WORKDIR}"/bin
 	make -j ${NPROC} ${MAKEOPTS}
 	make install
@@ -104,7 +106,8 @@ if [ ! -d np1sec ]; then
 	cd ..
 	mkdir np1sec-build
 	cd np1sec-build
-	cmake ../np1sec -DCMAKE_INSTALL_PREFIX="${WORKDIR}"/bin -DBUILD_TESTS=Off -DCMAKE_BUILD_TYPE=Debug
+	CXXFLAGS="-fsanitize=address" \
+		cmake ../np1sec -DCMAKE_INSTALL_PREFIX="${WORKDIR}"/bin -DBUILD_TESTS=Off -DCMAKE_BUILD_TYPE=Debug
 	make -j ${NPROC} ${MAKEOPTS}
 	cp "`libname np1sec`" ../bin/"`libdir`"/
 	cd ..
@@ -131,7 +134,12 @@ if [ ! -d np1sec-test-client ]; then
 	cd ..
 	mkdir np1sec-test-client-build
 	cd np1sec-test-client-build
-	cmake ../np1sec-test-client -DPIDGIN_INC_DIR="${WORKDIR}"/bin/include -DNP1SEC_LIB_DIR="${WORKDIR}"/bin/lib -DNP1SEC_INC_DIR="${WORKDIR}"/np1sec -DCMAKE_BUILD_TYPE=Debug
+	CXXFLAGS="-fsanitize=address" \
+		cmake ../np1sec-test-client \
+			-DPIDGIN_INC_DIR="${WORKDIR}"/bin/include \
+			-DNP1SEC_LIB_DIR="${WORKDIR}"/bin/lib \
+			-DNP1SEC_INC_DIR="${WORKDIR}"/np1sec \
+			-DCMAKE_BUILD_TYPE=Debug
 	make ${MAKEOPTS}
 	cp "`libname np1sec-plugin`" ../bin/
 	cd ..
