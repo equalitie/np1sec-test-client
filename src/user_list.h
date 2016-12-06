@@ -278,6 +278,8 @@ std::string UserList::User::path() const
 inline UserList::User::~User()
 {
     if (!_user_list) return;
+    assert(_user_list->_users.count(this));
+    _user_list->_users.erase(this);
     _user_list->_double_click_callbacks.erase(path());
     gtk_list_store_remove(_user_list->_store, &_iter);
 }
