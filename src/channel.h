@@ -369,6 +369,7 @@ template<class... Args>
 inline
 void Channel::inform(Args&&... args)
 {
+    log(this, " Channel: ", util::str(args...));
     _channel_view->display(my_username(), util::inform_str(args...));
 }
 
