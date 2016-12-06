@@ -48,7 +48,7 @@ with this test build and prevent that your regular chat client is compromised by
 any bugs in (n+1)sec.
 
 To run it, download this file to an empty directory:
-https://raw.githubusercontent.com/equalitie/np1sec-test-client/invite/run-np1sec.sh
+https://raw.githubusercontent.com/equalitie/np1sec-test-client/master/run-np1sec.sh
 
 Check that the file has the right permissions, else make it executable with the
 command:
