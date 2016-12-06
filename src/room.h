@@ -57,8 +57,10 @@ public:
     Room(PurpleConversation* conv);
     ~Room();
 
-    void start();
-    bool started() const { return _room.get(); }
+    void chat_joined();
+    void chat_left();
+
+    bool in_chat() const { return _room.get(); }
     void on_received_data(std::string sender, std::string message);
 
     void send_chat_message(const std::string& message);
@@ -171,13 +173,22 @@ Room::Room(PurpleConversation* conv)
 }
 
 inline
-void Room::start()
+void Room::chat_joined()
 {
-    log(this, " Room::start ", _room.get());
-    if (started()) return;
+    log(this, " Room::chat_joined ", _room.get());
+    if (in_chat()) return;
 
     _room.reset(new Np1SecRoom(this, _username, _private_key));
     _room->connect();
+}
+
+inline
+void Room::chat_left()
+{
+    log(this, " Room::chat_left ", _room.get());
+    if (!in_chat()) return;
+    _room.reset();
+    _channels.clear();
 }
 
 inline
@@ -195,6 +206,9 @@ inline
 Room::~Room()
 {
     log(this, " Room::~Room");
+    if (_room && _room->connected()) {
+        _room->disconnect();
+    }
 }
 
 inline
@@ -269,7 +283,7 @@ bool Room::interpret_as_command(const std::string& cmd)
 inline
 void Room::send_message(const std::string& message)
 {
-    if (!_room_view) {
+    if (!_room_view || !_room) {
         // TODO: Inform the user that the main chat window has been closed.
         return;
     }
@@ -283,7 +297,13 @@ void Room::send_message(const std::string& message)
      * - again - calls this function. Thus we'd need an additional
      * mechanism to break this loop.
      */
-    serv_chat_send( purple_conversation_get_gc(conv)
+    auto gc = purple_conversation_get_gc(conv);
+
+    if (!gc) return;
+
+    //log(this, " Room::send_message ", message);
+
+    serv_chat_send( gc
                   , purple_conv_chat_get_id(PURPLE_CONV_CHAT(conv))
                   , message.c_str()
                   , PURPLE_MESSAGE_SEND);

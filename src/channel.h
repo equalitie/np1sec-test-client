@@ -153,7 +153,10 @@ inline Channel::~Channel()
 {
     log(this, " Channel::~Channel start");
     _users.clear();
-    _delegate->leave(true /* Don't want to receive the 'left' callback */);
+
+    if (_room.in_chat()) {
+        _delegate->leave(true /* Don't want to receive the 'left' callback */);
+    }
 
     if (_channel_view) {
         _channel_view->reset_channel();

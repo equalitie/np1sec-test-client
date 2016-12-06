@@ -82,7 +82,14 @@ static void chat_joined_cb(PurpleConversation* conv, void*)
 {
     auto room = get_room(conv);
     assert(room);
-    room->start();
+    room->chat_joined();
+}
+
+static void chat_left_cb(PurpleConversation* conv, void*)
+{
+    auto room = get_room(conv);
+    assert(room);
+    room->chat_left();
 }
 
 static gboolean receiving_chat_msg_cb(PurpleAccount *account,
@@ -214,6 +221,7 @@ static void setup_purple_callbacks(PurplePlugin* plugin)
 
 	purple_signal_connect(conv_handle, "chat-buddy-left", plugin, PURPLE_CALLBACK(chat_buddy_left_cb), NULL);
 	purple_signal_connect(conv_handle, "chat-joined", plugin, PURPLE_CALLBACK(chat_joined_cb), NULL);
+	purple_signal_connect(conv_handle, "chat-left", plugin, PURPLE_CALLBACK(chat_left_cb), NULL);
     purple_signal_connect(conv_handle, "receiving-chat-msg", plugin, PURPLE_CALLBACK(receiving_chat_msg_cb), NULL);
     purple_signal_connect(conv_handle, "sending-chat-msg", plugin, PURPLE_CALLBACK(sending_chat_msg_cb), NULL);
 }
@@ -227,6 +235,7 @@ static void disconnect_purple_callbacks(PurplePlugin* plugin)
 
 	purple_signal_disconnect(conv_handle, "chat-buddy-left", plugin, PURPLE_CALLBACK(chat_buddy_left_cb));
 	purple_signal_disconnect(conv_handle, "chat-joined", plugin, PURPLE_CALLBACK(chat_joined_cb));
+	purple_signal_disconnect(conv_handle, "chat-left", plugin, PURPLE_CALLBACK(chat_left_cb));
     purple_signal_disconnect(conv_handle, "receiving-chat-msg", plugin, PURPLE_CALLBACK(receiving_chat_msg_cb));
     purple_signal_disconnect(conv_handle, "sending-chat-msg", plugin, PURPLE_CALLBACK(sending_chat_msg_cb));
 }
