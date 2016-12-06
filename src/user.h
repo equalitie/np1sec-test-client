@@ -46,6 +46,7 @@ public:
     const PublicKey& public_key() const { return _public_key; }
 
     void mark_joined();
+    void mark_not_joined();
     void mark_in_chat();
     void mark_as_invited();
     void mark_as_not_invited();
@@ -157,21 +158,33 @@ inline bool User::is_invited() const
     return invited_list().is_in(*_view);
 }
 
-inline void User::mark_joined() {
+inline void User::mark_joined()
+{
     insert_into(joined_list());
 }
 
-inline void User::mark_in_chat() {
-    _is_in_chat = true;
-    update_view();
-}
-
-inline void User::mark_as_not_invited() {
+inline void User::mark_not_joined()
+{
+    _is_in_chat = false;
     insert_into(other_list());
     update_view();
 }
 
-inline void User::mark_as_invited() {
+inline void User::mark_in_chat()
+{
+    _is_in_chat = true;
+    update_view();
+}
+
+inline void User::mark_as_not_invited()
+{
+    _is_in_chat = false;
+    insert_into(other_list());
+    update_view();
+}
+
+inline void User::mark_as_invited()
+{
     insert_into(invited_list());
     update_view();
 }

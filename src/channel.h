@@ -336,7 +336,10 @@ inline
 void Channel::user_left(const std::string& username)
 {
     inform("Channel::user_left(", username, ")");
-    remove_user(username);
+
+    if (auto u = find_user(username)) {
+        u->mark_not_joined();
+    }
 }
 
 inline
