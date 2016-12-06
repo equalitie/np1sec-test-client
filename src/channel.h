@@ -29,6 +29,7 @@
 
 /* np1sec_plugin headers */
 #include "user_list.h"
+#include "log.h"
 
 namespace np1sec_plugin {
 
@@ -132,6 +133,8 @@ inline Channel::Channel(np1sec::Conversation* delegate, Room& room)
     , _room(room)
     , _channel_view(new ChannelView(_room.shared_from_this(), *this))
 {
+    log(this, " Channel::Channel delegate:", delegate, " room:", &room);
+
     auto participants = _delegate->participants();
     auto invitees     = _delegate->invitees();
 
@@ -148,6 +151,7 @@ inline Channel::Channel(np1sec::Conversation* delegate, Room& room)
 
 inline Channel::~Channel()
 {
+    log(this, " Channel::~Channel start");
     _users.clear();
     _delegate->leave(true /* Don't want to receive the 'left' callback */);
 
@@ -156,6 +160,7 @@ inline Channel::~Channel()
     }
 
     delete _channel_view;
+    log(this, " Channel::~Channel end");
 }
 
 inline

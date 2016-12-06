@@ -163,6 +163,8 @@ Room::Room(PurpleConversation* conv)
     , _private_key(np1sec::PrivateKey::generate(true))
     , _toolbar(new Toolbar(PIDGIN_CONVERSATION(conv)))
 {
+    log(this, " Room::Room conv=", conv);
+
     _toolbar->add_button("Create conversation", [this] {
         _room->create_conversation();
     });
@@ -171,6 +173,7 @@ Room::Room(PurpleConversation* conv)
 inline
 void Room::start()
 {
+    log(this, " Room::start ", _room.get());
     if (started()) return;
 
     _room.reset(new Np1SecRoom(this, _username, _private_key));
@@ -191,6 +194,7 @@ User* Room::find_user_in_channel(const std::string& username)
 inline
 Room::~Room()
 {
+    log(this, " Room::~Room");
 }
 
 inline
@@ -413,12 +417,16 @@ template<class... Args>
 inline
 void Room::inform(Args&&... args)
 {
+    log(this, " Room::inform: ", util::str(std::forward<Args>(args)...));
+
     display(_username, util::inform_str(std::forward<Args>(args)...));
 }
 
 inline
 void Room::display(const std::string& message)
 {
+    log(this, " Room::display: ", message);
+
     display(_username, message);
 }
 

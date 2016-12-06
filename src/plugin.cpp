@@ -152,11 +152,19 @@ static void apply_np1sec(PurpleConversation* conv)
 
 static void unapply_np1sec(PurpleConversation* conv)
 {
+    using np1sec_plugin::log;
+
     assert(is_chat(conv));
 
     auto channel_view = np1sec_plugin::get_channel_view(conv);
     auto room_view    = np1sec_plugin::get_room_view(conv);
 
+    log("unapply_np1sec conv:", conv, " rv:", room_view, " cv:", channel_view, " start");
+
+    /*
+     * A pidgin conversation can't at the same time represent a room and
+     * a channel.
+     */
     assert(!(channel_view && room_view));
 
     /*
@@ -180,6 +188,8 @@ static void unapply_np1sec(PurpleConversation* conv)
 
     delete channel_view;
     delete room_view;
+
+    log("unapply_np1sec end");
 }
 
 //------------------------------------------------------------------------------
