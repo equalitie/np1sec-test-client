@@ -408,6 +408,7 @@ void Channel::joined_chat()
 inline void Channel::left()
 {
     inform("Channel::left()");
+    self_destruct();
 }
 
 inline
