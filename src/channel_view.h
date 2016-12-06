@@ -180,6 +180,8 @@ ChannelView::~ChannelView()
         assert(!_channel->_channel_view || _channel->_channel_view == this);
     }
 
+    set_channel_view(_conv, nullptr);
+
     if (!purple_conversation_destroyed) {
         purple_conversation_destroyed = true;
 
@@ -194,8 +196,6 @@ ChannelView::~ChannelView()
     if (_room->focused_channel() == this) {
         _room->set_channel_focus(nullptr);
     }
-
-    set_channel_view(_conv, nullptr);
 
     if (_channel) {
         _channel->_channel_view = nullptr;
