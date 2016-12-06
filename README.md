@@ -97,6 +97,14 @@ window, then click on "Join". Now you can have an encrypted, secure chat with
 all the people in the conversation.
 
 
+## Try it out!
+
+We invite our community to try out (n+1)sec with us. We'll be hanging out
+in the 'np1sec' room (np1sec@conference.jabber.ccc.de) on the jabber.ccc.de
+XMPP server between 15:00 and 18:00 CET every Friday until the end of the year.
+We look forward to chatting with you all securely!
+
+
 # Setup for developers
 
 For developers it is better to use a custom built pidgin. This is because it can
