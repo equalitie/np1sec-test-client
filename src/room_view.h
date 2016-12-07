@@ -130,14 +130,18 @@ inline RoomView::RoomView(PurpleConversation* conv, const std::shared_ptr<Room>&
     _vpaned = gtk_vpaned_new();
     g_object_ref_sink(_vpaned);
 
-    gtk_paned_pack2(GTK_PANED(_target), _vpaned, TRUE, TRUE);
+    gtk_paned_pack2(GTK_PANED(_target), _vpaned, FALSE, TRUE);
     gtk_paned_pack1(GTK_PANED(_vpaned), _userlist, TRUE, TRUE);
 
     _user_list.reset(new UserList("Users"));
     gtk_paned_pack2(GTK_PANED(_vpaned), _user_list->root_widget(), TRUE, TRUE);
 
-    // TODO: Not sure why the value of 1 gives a good result
-    gtk_widget_set_size_request(_vpaned, 1, -1);
+    {
+        gint width, height;
+        gtk_widget_get_size_request(_userlist, &width, &height);
+        gtk_widget_set_size_request(_vpaned, width, height);
+    }
+
     gtk_widget_show(_vpaned);
 }
 
