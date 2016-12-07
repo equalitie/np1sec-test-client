@@ -166,4 +166,7 @@ fi
 (cd np1sec && echo "Revision of np1sec: $(git rev-parse --short HEAD)")
 (cd np1sec-test-client && echo "Revision of np1sec-test-client: $(git rev-parse --short HEAD)")
 
+# Tell the np1sec test client to output debug log.
+export NP1SEC_TEST_CLIENT_PRINT_LOG=true
+
 bin/bin/pidgin --config=pidgin-home

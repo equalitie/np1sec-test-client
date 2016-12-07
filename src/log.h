@@ -18,15 +18,34 @@
 
 #pragma once
 
+#include <algorithm>
 #include <iostream>
 #include "util.h"
 
 namespace np1sec_plugin {
 
-template<class... Args>
-inline void log(Args&&... args) {
-    std::cout << "np1sec_plugin: " << util::str(std::forward<Args>(args)...)
-              << std::endl;
+template<class... Args> inline void log(Args&&... args)
+{
+    static boost::optional<bool> print_output;
+
+    if (!print_output) {
+        const char* e = std::getenv("NP1SEC_TEST_CLIENT_PRINT_LOG");
+
+        if (e) {
+            std::string env(e);
+            std::transform(env.begin(), env.end(), env.begin(), ::tolower);
+            print_output = (env == "1" || env == "true" || env == "yes");
+        }
+        else {
+            print_output = false;
+        }
+    }
+
+    if (*print_output) {
+        std::cout << "np1sec_plugin: "
+                  << util::str(std::forward<Args>(args)...)
+                  << std::endl;
+    }
 }
 
 } // np1sec_plugin namespace
