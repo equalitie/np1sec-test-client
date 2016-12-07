@@ -46,7 +46,7 @@ public:
 
     void send_chat_message(const std::string&);
 
-    bool purple_conversation_destroyed = false;
+    void close_window();
 
 private:
     static gboolean
@@ -54,6 +54,8 @@ private:
 
     static gboolean
     entry_nofocus_cb(GtkWidget*, GdkEventFocus*, ChannelView* self);
+
+    void disconnect_focus_signals(PurpleConversation* conv);
 
 private:
     std::shared_ptr<Room> _room;
@@ -167,30 +169,49 @@ ChannelView::ChannelView(const std::shared_ptr<Room>& room, Channel& channel)
 }
 
 inline
+void ChannelView::disconnect_focus_signals(PurpleConversation* conv)
+{
+    auto gtkconv = PIDGIN_CONVERSATION(conv);
+    g_signal_handler_disconnect(G_OBJECT(gtkconv->entry), focus_in_signal_id);
+    g_signal_handler_disconnect(G_OBJECT(gtkconv->entry), focus_out_signal_id);
+}
+
+inline
+void ChannelView::close_window()
+{
+    if (!_conv) return;
+
+    auto conv = _conv;
+    _conv = nullptr;
+
+    auto& sigs = GlobalSignals::instance();
+    auto f = std::move(sigs.on_conversation_deleted);
+    purple_conversation_destroy(conv);
+    sigs.on_conversation_deleted = std::move(f);
+
+    disconnect_focus_signals(conv);
+}
+
+inline
 ChannelView::~ChannelView()
 {
-    g_signal_handler_disconnect(G_OBJECT(_gtkconv->entry), focus_in_signal_id);
-    g_signal_handler_disconnect(G_OBJECT(_gtkconv->entry), focus_out_signal_id);
-
-    gtk_container_remove(GTK_CONTAINER(_target), _vbox);
-    gtk_paned_pack2(GTK_PANED(_target), _userlist, FALSE, TRUE);
-    g_object_unref(_userlist);
-
     if (_channel) {
         assert(!_channel->_channel_view || _channel->_channel_view == this);
     }
 
-    set_channel_view(_conv, nullptr);
-
-    if (!purple_conversation_destroyed) {
-        purple_conversation_destroyed = true;
-
-        auto& sigs = GlobalSignals::instance();
-
-        auto f = std::move(sigs.on_conversation_deleted);
-        purple_conversation_destroy(_conv);
-        sigs.on_conversation_deleted = std::move(f);
+    if (_conv) {
+        disconnect_focus_signals(_conv);
+        gtk_container_remove(GTK_CONTAINER(_target), _vbox);
+        gtk_paned_pack2(GTK_PANED(_target), _userlist, FALSE, TRUE);
+        g_object_unref(_userlist);
+        set_channel_view(_conv, nullptr);
     }
+
+    /* Note: we don't want to explicitly call close_window (or
+     * purple_conversation_destroy) because in most cases it'll be
+     * called implicitly from pidgin (e.g. when the user closes the
+     * conversation or the main window) which would result in double
+     * free. */
 
     // TODO: Is this necessary?
     if (_room->focused_channel() == this) {
@@ -214,6 +235,8 @@ void ChannelView::inform(Args&&... args)
 inline
 void ChannelView::display(const std::string& sender, const std::string& message)
 {
+    if (!_conv) return;
+
     _conv->ui_ops->write_conv(_conv,
                               sender.c_str(),
                               sender.c_str(),

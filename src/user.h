@@ -62,6 +62,8 @@ public:
     bool has_joined() const;
     bool is_invited() const;
 
+    bool never_joined() const { return _never_joined; }
+
 private:
     UserList& joined_list() const;
     UserList& invited_list() const;
@@ -73,6 +75,7 @@ private:
     Channel& _channel;
     bool _is_myself;
     bool _is_in_chat = false;
+    bool _never_joined = true;
     std::unique_ptr<UserList::User> _view;
 };
 
@@ -160,6 +163,7 @@ inline bool User::is_invited() const
 
 inline void User::mark_joined()
 {
+    _never_joined = false;
     insert_into(joined_list());
     update_view();
 }

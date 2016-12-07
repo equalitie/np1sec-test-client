@@ -81,8 +81,6 @@ public:
 
     std::string room_name() const;
 
-    void close_all_channels();
-
 private:
     void display(const std::string& message);
     void display(const std::string& sender, const std::string& message);
@@ -206,18 +204,14 @@ inline
 Room::~Room()
 {
     log(this, " Room::~Room");
+
+    /* Do this before we disconnect, that way channels may be able
+     * to send a leave signal. */
+    _channels.clear();
+
     if (_room && _room->connected()) {
         _room->disconnect();
     }
-}
-
-inline
-void Room::close_all_channels()
-{
-    for (auto& c : _channels | boost::adaptors::map_values) {
-        c->channel_view()->purple_conversation_destroyed = true;
-    }
-    _channels.clear();
 }
 
 inline

@@ -415,6 +415,11 @@ void Channel::joined_chat()
 inline void Channel::left()
 {
     inform("Channel::left()");
+    if (auto u = find_user(my_username())) {
+        if (_channel_view && u->never_joined()) {
+            _channel_view->close_window();
+        }
+    }
     self_destruct();
 }
 

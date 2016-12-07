@@ -183,14 +183,7 @@ static void unapply_np1sec(PurpleConversation* conv)
     np1sec_plugin::set_room_view(conv, nullptr);
 
     if (room_view) {
-        auto room = get_room(conv);
-        assert(room);
-        room->close_all_channels();
         set_room(conv, nullptr);
-    }
-
-    if (channel_view) {
-        channel_view->purple_conversation_destroyed = true;
     }
 
     delete channel_view;
