@@ -237,6 +237,7 @@ void Channel::interpret_as_command(const std::string& cmd)
 
 inline
 void Channel::invite(const std::string& invitee, const PublicKey& pubkey) {
+    inform("Channel::invite ", invitee, ")");
     _delegate->invite(invitee, pubkey);
 }
 
