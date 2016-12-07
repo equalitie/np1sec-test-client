@@ -140,7 +140,7 @@ inline void User::update_view()
     }
 
     if (has_joined() && !_is_in_chat) {
-        name += " c";
+        name += " !c";
     }
 
     _view->set_text(name);
@@ -161,6 +161,7 @@ inline bool User::is_invited() const
 inline void User::mark_joined()
 {
     insert_into(joined_list());
+    update_view();
 }
 
 inline void User::mark_not_joined()
@@ -185,6 +186,7 @@ inline void User::mark_as_not_invited()
 
 inline void User::mark_as_invited()
 {
+    _is_in_chat = false;
     insert_into(invited_list());
     update_view();
 }
