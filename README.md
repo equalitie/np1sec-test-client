@@ -77,30 +77,18 @@ projects to their latest versions. To avoid that one may instead execute
 
 ## How to start a group chat with the (n+1)sec plugin
 
-Once you have enabled the plugin, you can access the chat where you are planning
-to have your encrypted group chat conversation as you normally do with
+Once you have enabled the plugin (Tools > Plugins > (n+1)sec secure messaging), you can access the chat where you are planning to have your encrypted group chat conversation as you normally do with
 [Pidgin](https://developer.pidgin.im/wiki/Using%20Pidgin#ChatroomsConferences).
 
-Under the list of people in the room, you will see a further window listing
-"Participants" -- here you will see all the users who have installed and enabled
-their (n+1)sec plugin.
+Under the list of "x people in this room", you will see a further window below listing "Users" -- here you will see everyone who has installed and enabled their (n+1)sec plugin.
 
-To invite people to an encrypted chat, right-click their user name in the
-"Participants" window and click on "Invite". A window will open including all
-the users you have invited to the chat room. When users accept your invitation,
-you can start the conversation.
-
-If someone invites you to an encrypted conversation, you need to accept the
-invitation to join in the chat. Go to the window that has opened when you
-received the invitation and right-click your user name in the "Participants"
-window, then click on "Join". Now you can have an encrypted, secure chat with
-all the people in the conversation.
+To invite people to an encrypted chat, click the "Create conversation" button. A new chat window will open. You will need to select users to invite to the encrypted conversation, by double-clicking their username in the "Invite" window. Once a user is invited, they are moved to the "Invited" window. The invited user needs to accept by right-clicking on their username and selecting "Join". When all users have accepted your invitation, you can start the conversation.
 
 
 ## Try it out!
 
 We invite our community to try out (n+1)sec with us. We'll be hanging out
-in the 'np1sec' room (np1sec@conference.jabber.ccc.de) on the jabber.ccc.de
+in the 'np1sec' room (np1sec@conference.np1sec.equalit.ie) on the np1sec.equalit.ie
 XMPP server between 15:00 and 18:00 CET every Friday until the end of the year.
 We look forward to chatting with you all securely!
 
