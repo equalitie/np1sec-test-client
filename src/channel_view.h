@@ -184,12 +184,12 @@ void ChannelView::close_window()
     auto conv = _conv;
     _conv = nullptr;
 
+    disconnect_focus_signals(conv);
+
     auto& sigs = GlobalSignals::instance();
     auto f = std::move(sigs.on_conversation_deleted);
     purple_conversation_destroy(conv);
     sigs.on_conversation_deleted = std::move(f);
-
-    disconnect_focus_signals(conv);
 }
 
 inline
