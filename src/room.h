@@ -43,8 +43,8 @@ class ChannelView;
 class User;
 class RoomView;
 
-struct Room final : private np1sec::RoomInterface
-                  , public std::enable_shared_from_this<Room> {
+class Room final : private np1sec::RoomInterface
+                 , public std::enable_shared_from_this<Room> {
     using PublicKey = np1sec::PublicKey;
 
 #if false && !defined(_NDEBUG)
