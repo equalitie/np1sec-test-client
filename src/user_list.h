@@ -20,6 +20,7 @@
 
 #include "defer.h"
 #include "popup.h"
+#include <boost/optional.hpp>
 
 namespace np1sec_plugin {
 
@@ -56,6 +57,12 @@ private:
     static
     gint on_button_pressed(GtkWidget*, GdkEventButton*, UserList*);
 
+    static
+    boost::optional<size_t> path_to_pos(GtkTreePath*);
+
+    void add_user(User*);
+    void remove_user(User*);
+
 private:
     friend class User;
 
@@ -64,11 +71,11 @@ private:
 
     //            +--> Path in the tree
     //            |
-    std::map<std::string, std::function<void()>> _double_click_callbacks;
-    std::map<std::string, std::function<void(GdkEventButton*)>> _show_popup_callbacks;
+    //std::map<std::string, std::function<void()>> _double_click_callbacks;
+    //std::map<std::string, std::function<void(GdkEventButton*)>> _show_popup_callbacks;
 
-    std::set<User*> _users;
-    std::set<gint> _signal_handlers;
+    std::list<User*> _users;
+    std::set<gint>   _signal_handlers;
 };
 
 //------------------------------------------------------------------------------
@@ -102,12 +109,12 @@ public:
 
 private:
     std::string path() const;
+    void do_set_text(const std::string&);
 
 private:
     UserList* _user_list = nullptr;
     std::string _text;
     GtkTreeIter _iter;
-    std::shared_ptr<bool> _was_destroyed;
 };
 
 //------------------------------------------------------------------------------
@@ -153,21 +160,59 @@ inline UserList::~UserList()
 }
 
 inline
+void UserList::add_user(UserList::User* u)
+{
+    _users.push_back(u);
+    gtk_list_store_append(_store, &u->_iter);
+}
+
+inline
+void UserList::remove_user(UserList::User* u)
+{
+    auto ui = std::find(_users.begin(), _users.end(), u);
+
+    assert(ui != _users.end());
+    _users.erase(ui);
+
+    gtk_list_store_remove(_store, &u->_iter);
+}
+
+inline
+boost::optional<size_t> UserList::path_to_pos(GtkTreePath* path)
+{
+    if (!path) return boost::none;
+
+    gchar* c_str = gtk_tree_path_to_string(path);
+    auto free_str = defer([c_str] { g_free(c_str); });
+
+    try {
+        return std::stoi(c_str);
+    }
+    catch (const std::exception&) { }
+
+    return boost::none;
+}
+
+inline
 void UserList::on_double_click( GtkTreeView *tree_view
                               , GtkTreePath *path
                               , GtkTreeViewColumn *column
                               , UserList* v)
 {
-    gchar* c_str = gtk_tree_path_to_string(path);
-    auto free_str = defer([c_str] { g_free(c_str); });
+    auto pos = path_to_pos(path);
 
-    auto cb_i = v->_double_click_callbacks.find(c_str);
+    if (!pos) return;
 
-    if (cb_i == v->_double_click_callbacks.end()) {
-        return;
+    auto i = std::next(v->_users.begin(), *pos);
+
+    if (i == v->_users.end()) return;
+
+    if ((*i)->on_double_click) {
+        // Make a copy in case the callback wants to
+        // reset it.
+        auto f = (*i)->on_double_click;
+        f();
     }
-
-    cb_i->second();
 }
 
 // Return TRUE if we handled it.
@@ -182,24 +227,23 @@ gboolean UserList::on_button_pressed( GtkWidget*
         gtk_tree_view_get_path_at_pos(v->_tree_view,
                                       event->x, event->y,
                                       &path, NULL, NULL, NULL);
+
         auto free_path = defer([path] { gtk_tree_path_free(path); });
 
-        if (path == NULL)
-            return FALSE;
+        auto pos = path_to_pos(path);
 
-        GtkTreeIter iter;
-        gtk_tree_model_get_iter(GTK_TREE_MODEL(v->_store), &iter, path);
+        if (!pos) return FALSE;
 
-        auto path_str = util::gtk::tree_iter_to_path(iter, GTK_TREE_STORE(v->_store));
+        auto user_i = std::next(v->_users.begin(), *pos);
 
-        auto action_i = v->_show_popup_callbacks.find(path_str);
+        if (user_i == v->_users.end()) return FALSE;
 
-        if (action_i == v->_show_popup_callbacks.end())
-            return FALSE;
+        auto* user = *user_i;
 
-        action_i->second(event);
-
-        return TRUE;
+        if (!user->popup_actions.empty()) {
+            show_popup(event, user->popup_actions);
+            return TRUE;
+        }
     }
 
     return FALSE;
@@ -227,50 +271,40 @@ void UserList::setup_callbacks(GtkTreeView* tree_view)
 // UserList::User Implementation
 //------------------------------------------------------------------------------
 inline UserList::User::User()
-    : _was_destroyed(std::make_shared<bool>(false))
 {
 }
 
 inline void UserList::User::bind(UserList& list)
 {
-    assert(!_user_list || _user_list == &list);
+    if (_user_list == &list) {
+        return;
+    }
 
-    if (_user_list == &list) return;
+    if (_user_list) {
+        _user_list->remove_user(this);
+    }
 
     _user_list = &list;
 
-    _user_list->_users.insert(this);
-
-    gtk_list_store_append(_user_list->_store, &_iter);
+    list.add_user(this);
 
     if (!_text.empty()) {
-        gtk_list_store_set(_user_list->_store, &_iter,
-                           COL_NAME, _text.c_str(),
-                           -1);
+        do_set_text(_text);
     }
-
-    auto p = path();
-
-    _user_list->_double_click_callbacks[p] = [this, d = _was_destroyed] {
-        if (*d) return;
-        if (on_double_click) on_double_click();
-    };
-
-    _user_list->_show_popup_callbacks[p] = [this, d = _was_destroyed] (GdkEventButton* e) {
-        if (*d) return;
-        show_popup(e, popup_actions);
-    };
 }
 
 inline void UserList::User::set_text(std::string str)
 {
     _text = std::move(str);
-
     if (!_user_list) return;
+    do_set_text(_text);
+}
 
+inline void UserList::User::do_set_text(const std::string& str)
+{
+    assert(_user_list);
     gtk_list_store_set(_user_list->_store, &_iter,
-                       COL_NAME, _text.c_str(),
-                       -1);
+                       COL_NAME, str.c_str(), -1);
 }
 
 inline
@@ -281,12 +315,8 @@ std::string UserList::User::path() const
 
 inline UserList::User::~User()
 {
-    *_was_destroyed = true;
     if (!_user_list) return;
-    assert(_user_list->_users.count(this));
-    _user_list->_users.erase(this);
-    _user_list->_double_click_callbacks.erase(path());
-    gtk_list_store_remove(_user_list->_store, &_iter);
+    _user_list->remove_user(this);
 }
 
 } // np1sec_plugin namespace
