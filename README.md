@@ -58,7 +58,7 @@ In Fedora you can install all dependencies using the following command (tested
 and working on Fedora 25):
 
 ```
-dnf install cmake git intltool boost-devel libgcrypt-devel glib2-devel gnutls-devel gtk2-devel libasan libxml2-devel wget
+dnf install boost-devel cmake gcc gcc-c++ git glib2-devel gnutls-devel gtk2-devel intltool kernel-devel libasan libgcrypt-devel libxml2-devel make wget
 ```
 
 
