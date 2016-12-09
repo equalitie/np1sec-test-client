@@ -143,7 +143,11 @@ inline void User::update_view()
     }
 
     if (has_joined() && !_is_in_chat) {
-        name += " !c";
+        if (auto main_user = _channel.find_user(_channel.my_username())) {
+            if (main_user->has_joined()) {
+                name += " !c";
+            }
+        }
     }
 
     _view->set_text(name);
