@@ -72,6 +72,13 @@ static void set_room(PurpleConversation* conv, Room* room)
 }
 
 //------------------------------------------------------------------------------
+static bool is_in_chat(PurpleConversation* conv) {
+    auto chat = PURPLE_CONV_CHAT(conv);
+    return purple_conv_chat_get_id(chat) != 0
+        && !purple_conv_chat_has_left(chat);
+}
+
+//------------------------------------------------------------------------------
 
 extern "C" {
 
@@ -143,7 +150,7 @@ void chat_buddy_left_cb(PurpleConversation* conv, const char* name, const char*,
 }
 
 //------------------------------------------------------------------------------
-static void apply_np1sec(PurpleConversation* conv)
+static void  apply_np1sec(PurpleConversation* conv)
 {
     using namespace np1sec_plugin;
 
@@ -155,6 +162,12 @@ static void apply_np1sec(PurpleConversation* conv)
 
     set_room_view(conv, room_view);
     set_room(conv, room.get());
+
+    // This only happens when we enable the plugin and
+    // conversations have already been created.
+    if (is_in_chat(conv)) {
+        room->chat_joined();
+    }
 }
 
 static void unapply_np1sec(PurpleConversation* conv)
