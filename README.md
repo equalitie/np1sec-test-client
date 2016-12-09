@@ -27,6 +27,7 @@ Jabber server.
 
 We look forward to chatting with you all securely!
 
+
 # Setup for users
 
 The (n+1)sec test client works on any Linux distribution.
@@ -35,13 +36,16 @@ The (n+1)sec test client works on any Linux distribution.
 
 Before you run the script to install the np1sec-test-client, you should check
 that the following packages are installed on your system, and install them if
-they are not.
+they are not. You will also need a C++ compiler that supports C++14. In Debian
+you can install the `build-essential` package.
 
 ```
 cmake
 git
 intltool
+libasan
 libboost1.55-dev (or higher)
+libboost-all-dev
 libgcrypt-dev
 libglib2.0-dev
 libgnutls-dev
@@ -50,11 +54,11 @@ libxml2-dev
 wget
 ```
 
-You will also need a C++ compiler that supports C++14. In Debian you can install
-the `build-essential` package. In Fedora you can use the following command:
+In Fedora you can install all dependencies using the following command (tested 
+and working on Fedora 25):
 
 ```
-yum install make gcc gcc-c++ kernel-devel
+dnf install cmake git intltool boost-devel libgcrypt-devel glib2-devel gnutls-devel gtk2-devel libasan libxml2-devel wget
 ```
 
 
@@ -85,6 +89,13 @@ command to run the install script:
 
 ```
 ./run-np1sec.sh
+```
+
+The script performs some automatic dependency resolution before building. This
+should work well for users of Debian-based distributions, but users of other
+distributions can disable this dependency resolution by executing the script with:
+```
+./run-np1sec.sh --force
 ```
 
 On success, the script will start Pidgin, where you can go to `Tools > Plugins`
