@@ -133,7 +133,7 @@ inline RoomView::RoomView(PurpleConversation* conv, const std::shared_ptr<Room>&
     gtk_paned_pack2(GTK_PANED(_target), _vpaned, FALSE, TRUE);
     gtk_paned_pack1(GTK_PANED(_vpaned), _userlist, TRUE, TRUE);
 
-    _user_list.reset(new UserList("Users"));
+    _user_list.reset(new UserList("(n+1)sec users"));
     gtk_paned_pack2(GTK_PANED(_vpaned), _user_list->root_widget(), TRUE, TRUE);
 
     {
