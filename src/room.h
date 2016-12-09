@@ -141,8 +141,6 @@ private:
                  < std::tie(other.name, other.public_key);
         }
     };
-
-    std::queue<std::set<Invitee>> _invite_queue;
 };
 
 } // np1sec_plugin namespace
@@ -324,14 +322,6 @@ void Room::add_user(const std::string& username, const PublicKey& pubkey)
     }
     else {
         u->set_text(username);
-        
-        auto invite = [this, username, pubkey] {
-            _invite_queue.emplace(std::set<Invitee>{Invitee{username, pubkey}});
-            _room->create_conversation();
-        };
-
-        u->popup_actions["Invite"] = invite;
-        u->on_double_click = invite;
     }
 
     for (auto& c : _channels | boost::adaptors::map_values) {
@@ -384,15 +374,6 @@ Room::created_conversation(np1sec::Conversation* c)
 
     auto channel = new Channel(c, *this);
     _channels.emplace(c, std::unique_ptr<Channel>(channel));
-
-    if (!_invite_queue.empty()) {
-        auto invitees = std::move(_invite_queue.front());
-        _invite_queue.pop();
-
-        for (const auto& invitee : invitees) {
-            channel->invite(invitee.name, invitee.public_key);
-        }
-    }
 
     return channel;
 }
