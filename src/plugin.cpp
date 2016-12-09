@@ -87,9 +87,16 @@ extern "C" {
 //------------------------------------------------------------------------------
 static void chat_joined_cb(PurpleConversation* conv, void*)
 {
-    auto room = get_room(conv);
-    assert(room);
-    room->chat_joined();
+    /*
+     * Note: We can't call room->joined_chat() here because
+     * at this time PURPLE_CONV_CHAT(conv)->nick is still set to
+     * the XMPP JID and not the OccupantID. The latter is what
+     * we get when a message arrives so it must also be
+     * the OccupantID that we initialize np1sec::Room with.
+     *
+     * As a consequence we call the room->joined_chat()
+     * in the chat-buddy-joined callback.
+     */
 }
 
 static void chat_left_cb(PurpleConversation* conv, void*)
@@ -105,6 +112,8 @@ static gboolean receiving_chat_msg_cb(PurpleAccount *account,
                                       PurpleConversation* conv,
                                       PurpleMessageFlags *flags)
 {
+    using namespace np1sec_plugin;
+
     if (!is_chat(conv)) return FALSE;
 
     auto room = get_room(conv);
@@ -120,7 +129,7 @@ static gboolean receiving_chat_msg_cb(PurpleAccount *account,
     // Ignore historic messages.
     if (*flags & PURPLE_MESSAGE_DELAYED) return TRUE;
 
-    room->on_received_data(*sender, *message);
+    room->on_received_data(util::normalize_name(account, *sender), *message);
 
     // Returning TRUE causes this message not to be displayed.
     // Displaying is done explicitly from np1sec.
@@ -137,6 +146,20 @@ void sending_chat_msg_cb(PurpleAccount *account, char **message, int id, void*) 
 
     g_free(*message);
     *message = NULL;
+}
+
+static
+void chat_buddy_joined_cb(PurpleConversation *conv, const char *name,
+                          PurpleConvChatBuddyFlags flags,
+                          gboolean new_arrival)
+{
+    if (!is_chat(conv)) return;
+
+    auto room = get_room(conv);
+    if (!room) return;
+
+    // Note the comment in the chat_joined_cb function.
+    room->chat_joined();
 }
 
 static
@@ -225,6 +248,7 @@ static void setup_purple_callbacks(PurplePlugin* plugin)
 
     void* conv_handle = purple_conversations_get_handle();
 
+	purple_signal_connect(conv_handle, "chat-buddy-joined", plugin, PURPLE_CALLBACK(chat_buddy_joined_cb), NULL);
 	purple_signal_connect(conv_handle, "chat-buddy-left", plugin, PURPLE_CALLBACK(chat_buddy_left_cb), NULL);
 	purple_signal_connect(conv_handle, "chat-joined", plugin, PURPLE_CALLBACK(chat_joined_cb), NULL);
 	purple_signal_connect(conv_handle, "chat-left", plugin, PURPLE_CALLBACK(chat_left_cb), NULL);
@@ -239,6 +263,7 @@ static void disconnect_purple_callbacks(PurplePlugin* plugin)
 
     void* conv_handle = purple_conversations_get_handle();
 
+	purple_signal_disconnect(conv_handle, "chat-buddy-joined", plugin, PURPLE_CALLBACK(chat_buddy_joined_cb));
 	purple_signal_disconnect(conv_handle, "chat-buddy-left", plugin, PURPLE_CALLBACK(chat_buddy_left_cb));
 	purple_signal_disconnect(conv_handle, "chat-joined", plugin, PURPLE_CALLBACK(chat_joined_cb));
 	purple_signal_disconnect(conv_handle, "chat-left", plugin, PURPLE_CALLBACK(chat_left_cb));
