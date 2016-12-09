@@ -1,28 +1,35 @@
-An experimental [(n+1)1sec](https://github.com/equalitie/np1sec) plugin for [Pidgin](https://www.pidgin.im/)
+An experimental [(n+1)sec](https://github.com/equalitie/np1sec) plugin for [Pidgin](https://www.pidgin.im/)
 ==================================================
 
 **Important Warning**: This is a minimal test client for under-construction
 software. It may crash and it may have undocumented security bugs. You should
-rely on it for for neither security nor communications.
+not rely on it for security - or even stable communications.
 
 
 # Try (n+1)sec!
 
-We invite our community to try out (n+1)sec with us. We'll be hanging out in
-the `np1sec` room on the `np1sec.equalit.ie` XMPP server
-(`np1sec@conference.np1sec.equalit.ie`) between 14:00 and 17:00 UTC every
-Friday until the end of the 2016.
+We invite our community to try out (n+1)sec with us. We'll be hanging out in the
+`np1sec` room on the `np1sec.equalit.ie` XMPP server
+(`np1sec@conference.np1sec.equalit.ie`) between 14:00 and 17:00 UTC every Friday
+until the end of 2016.
 
-You'll need an account on the sever to join us. You can create one through this
-client - registrations are open.
+You'll need an account on the server to join us. Registrations are open and you
+can create an account through the wizard that will open automatically when you
+first launch the script to install this client.
+
+* Protocol: XMPP
+* Domain: np1sec.equalit.ie
+
+Choose a user name you like and a strong password and check the "Create this new
+account on the server" option before you click "Add". Confirm your user name and
+password in the prompt, click OK and you'll have an account on the testing
+Jabber server.
 
 We look forward to chatting with you all securely!
-
 
 # Setup for users
 
 The (n+1)sec test client works on any Linux distribution.
-
 
 ## Dependencies
 
@@ -33,7 +40,6 @@ they are not.
 ```
 cmake
 git
-intltool
 intltool
 libboost1.55-dev (or higher)
 libgcrypt-dev
@@ -60,7 +66,7 @@ build pidgin-2.11, the (n+1)sec library and this plugin for you.
 This script builds a separate Pidgin instance with (n+1)sec support, which uses
 a separate configuration from any Pidgin you may already be running on your
 machine. This isn't strictly necessary and you could run (n+1)sec in your
-day-to-day pidgin if you like, but this solution will avoid several problems
+day-to-day Pidgin if you like, but this solution will avoid several problems
 with this test build and avoid your regular chat client being compromised by
 any bugs in (n+1)sec.
 
@@ -81,10 +87,10 @@ command to run the install script:
 ./run-np1sec.sh
 ```
 
-On success, the script will start pidgin, where you can go to `Tools > Plugins`
+On success, the script will start Pidgin, where you can go to `Tools > Plugins`
 and enable the `(n+1)sec Secure messaging` plugin.
 
-Subsequent pidgin executions can be done by executing the same command again.
+Subsequent Pidgin executions can be done by executing the same command again.
 Note however, that executing it will update the np1sec and np1sec-test-client
 projects to their latest versions. To avoid that one may instead execute:
 
