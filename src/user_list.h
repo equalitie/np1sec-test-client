@@ -69,11 +69,6 @@ private:
     GtkTreeView* _tree_view;
     GtkListStore* _store;
 
-    //            +--> Path in the tree
-    //            |
-    //std::map<std::string, std::function<void()>> _double_click_callbacks;
-    //std::map<std::string, std::function<void(GdkEventButton*)>> _show_popup_callbacks;
-
     std::list<User*> _users;
     std::set<gint>   _signal_handlers;
 };
@@ -108,7 +103,6 @@ public:
     ~User();
 
 private:
-    std::string path() const;
     void do_set_text(const std::string&);
 
 private:
@@ -305,12 +299,6 @@ inline void UserList::User::do_set_text(const std::string& str)
     assert(_user_list);
     gtk_list_store_set(_user_list->_store, &_iter,
                        COL_NAME, str.c_str(), -1);
-}
-
-inline
-std::string UserList::User::path() const
-{
-    return util::gtk::tree_iter_to_path(_iter, GTK_TREE_STORE(_user_list->_store));
 }
 
 inline UserList::User::~User()
