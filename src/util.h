@@ -130,6 +130,24 @@ auto exec(const char* msg, F&& f, Args&&... args)
     return future.get();
 }
 
+static const char* normalize_name(PurpleAccount* account, const char* name)
+{
+    auto info = PURPLE_PLUGIN_PROTOCOL_INFO(account->gc->prpl);
+    assert(info);
+    assert(info->normalize);
+    if (!info->normalize) { return name; }
+    auto normalized = info->normalize(account, name);
+    assert(!name || normalized);
+    return normalized;
+}
+
+static const char* normalized_name(PurpleConversation* conv)
+{
+    auto chat = PURPLE_CONV_CHAT(conv);
+    assert(chat);
+    return chat->nick;
+}
+
 namespace gtk {
 
 inline

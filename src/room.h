@@ -174,6 +174,8 @@ void Room::chat_joined()
     log(this, " Room::chat_joined ", _room.get());
     if (in_chat()) return;
 
+    _username = util::normalized_name(_conv);
+
     _room.reset(new Np1SecRoom(this, _username, _private_key));
     _room->connect();
 }
