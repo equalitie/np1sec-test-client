@@ -248,10 +248,10 @@ static void setup_purple_callbacks(PurplePlugin* plugin)
 
     void* conv_handle = purple_conversations_get_handle();
 
-	purple_signal_connect(conv_handle, "chat-buddy-joined", plugin, PURPLE_CALLBACK(chat_buddy_joined_cb), NULL);
-	purple_signal_connect(conv_handle, "chat-buddy-left", plugin, PURPLE_CALLBACK(chat_buddy_left_cb), NULL);
-	purple_signal_connect(conv_handle, "chat-joined", plugin, PURPLE_CALLBACK(chat_joined_cb), NULL);
-	purple_signal_connect(conv_handle, "chat-left", plugin, PURPLE_CALLBACK(chat_left_cb), NULL);
+    purple_signal_connect(conv_handle, "chat-buddy-joined", plugin, PURPLE_CALLBACK(chat_buddy_joined_cb), NULL);
+    purple_signal_connect(conv_handle, "chat-buddy-left", plugin, PURPLE_CALLBACK(chat_buddy_left_cb), NULL);
+    purple_signal_connect(conv_handle, "chat-joined", plugin, PURPLE_CALLBACK(chat_joined_cb), NULL);
+    purple_signal_connect(conv_handle, "chat-left", plugin, PURPLE_CALLBACK(chat_left_cb), NULL);
     purple_signal_connect(conv_handle, "receiving-chat-msg", plugin, PURPLE_CALLBACK(receiving_chat_msg_cb), NULL);
     purple_signal_connect(conv_handle, "sending-chat-msg", plugin, PURPLE_CALLBACK(sending_chat_msg_cb), NULL);
 }
@@ -263,10 +263,10 @@ static void disconnect_purple_callbacks(PurplePlugin* plugin)
 
     void* conv_handle = purple_conversations_get_handle();
 
-	purple_signal_disconnect(conv_handle, "chat-buddy-joined", plugin, PURPLE_CALLBACK(chat_buddy_joined_cb));
-	purple_signal_disconnect(conv_handle, "chat-buddy-left", plugin, PURPLE_CALLBACK(chat_buddy_left_cb));
-	purple_signal_disconnect(conv_handle, "chat-joined", plugin, PURPLE_CALLBACK(chat_joined_cb));
-	purple_signal_disconnect(conv_handle, "chat-left", plugin, PURPLE_CALLBACK(chat_left_cb));
+    purple_signal_disconnect(conv_handle, "chat-buddy-joined", plugin, PURPLE_CALLBACK(chat_buddy_joined_cb));
+    purple_signal_disconnect(conv_handle, "chat-buddy-left", plugin, PURPLE_CALLBACK(chat_buddy_left_cb));
+    purple_signal_disconnect(conv_handle, "chat-joined", plugin, PURPLE_CALLBACK(chat_joined_cb));
+    purple_signal_disconnect(conv_handle, "chat-left", plugin, PURPLE_CALLBACK(chat_left_cb));
     purple_signal_disconnect(conv_handle, "receiving-chat-msg", plugin, PURPLE_CALLBACK(receiving_chat_msg_cb));
     purple_signal_disconnect(conv_handle, "sending-chat-msg", plugin, PURPLE_CALLBACK(sending_chat_msg_cb));
 }
@@ -278,11 +278,11 @@ gboolean np1sec_plugin_load(PurplePlugin* plugin)
     //---------------------------------------------------
     // Apply the plugin to chats which were created before
     // this plugin was loaded.
-	GList *convs = purple_get_conversations();
+    GList *convs = purple_get_conversations();
 
-	while (convs) {
+    while (convs) {
 
-		PurpleConversation *conv = (PurpleConversation *)convs->data;
+        PurpleConversation *conv = (PurpleConversation *)convs->data;
 
         if (is_chat(conv) && !get_room(conv)) {
             /* We'll make use of this variable, so make sure pidgin
@@ -291,8 +291,8 @@ gboolean np1sec_plugin_load(PurplePlugin* plugin)
             apply_np1sec(conv);
         }
 
-		convs = convs->next;
-	}
+        convs = convs->next;
+    }
 
     return true;
 }
@@ -301,18 +301,18 @@ gboolean np1sec_plugin_unload(PurplePlugin* plugin)
 {
     disconnect_purple_callbacks(plugin);
 
-	GList *convs = purple_get_conversations();
+    GList *convs = purple_get_conversations();
 
-	while (convs) {
+    while (convs) {
 
-		PurpleConversation *conv = (PurpleConversation *)convs->data;
+        PurpleConversation *conv = (PurpleConversation *)convs->data;
 
         if (is_chat(conv)) {
             unapply_np1sec(conv);
         }
 
-		convs = convs->next;
-	}
+        convs = convs->next;
+    }
 
     return true;
 }
