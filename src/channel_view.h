@@ -121,7 +121,7 @@ ChannelView::ChannelView(const std::shared_ptr<Room>& room, Channel& channel)
 
     _gtkconv = PIDGIN_CONVERSATION(_conv);
 
-    gtk_notebook_set_current_page(GTK_NOTEBOOK(_gtkconv->win->notebook, -1);
+    //gtk_notebook_set_current_page(GTK_NOTEBOOK(_gtkconv->win->notebook), -1);
 
     focus_in_signal_id
         = g_signal_connect(G_OBJECT(_gtkconv->entry), "focus-in-event",
