@@ -43,7 +43,7 @@ you can install the `build-essential` package.
 cmake
 git
 intltool
-libasan
+libasan (optional)
 libboost1.55-dev (or higher)
 libboost-all-dev
 libgcrypt-dev

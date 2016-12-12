@@ -20,6 +20,14 @@ testheader() {
 	return $RETURN
 }
 
+testasan() {
+	RETURN=0
+	echo "main(){}" > conftest.c
+	${CXX-c++} conftest.c -fsanitize=address -o conftest.a.out >/dev/null 2>/dev/null || RETURN=1
+	rm -f conftest.c conftest.a.out
+	return $RETURN
+}
+
 libname() {
 	# TODO: support os x
 	echo "lib$1.so"
@@ -70,6 +78,11 @@ if [ -n "${DEPS}" ]; then
 	echo "Ignoring missing dependencies."
 fi
 
+if testasan; then
+	export CFLAGS="-fsanitize=address -ggdb"
+	export CXXFLAGS="-fsanitize=address -ggdb"
+fi
+
 PIDGIN_TAR_FILE=pidgin-2.11.0.tar.bz2
 PIDGIN_SHA256=f72613440586da3bdba6d58e718dce1b2c310adf8946de66d8077823e57b3333
 
@@ -89,8 +102,6 @@ if [ ! -x bin/bin/pidgin ]; then
 	../pidgin-2.11.0/configure --disable-missing-dependencies \
 	                           --disable-consoleui \
 	                           --with-dynamic-prpls=jabber \
-	                           CFLAGS="-fsanitize=address -ggdb" \
-	                           CXXFLAGS="-fsanitize=address -ggdb" \
 	                           --prefix="${WORKDIR}"/bin
 	make -j ${NPROC} ${MAKEOPTS}
 	make install
@@ -106,8 +117,7 @@ if [ ! -d np1sec ]; then
 	cd ..
 	mkdir np1sec-build
 	cd np1sec-build
-	CXXFLAGS="-fsanitize=address" \
-		cmake ../np1sec -DCMAKE_INSTALL_PREFIX="${WORKDIR}"/bin -DBUILD_TESTS=Off -DCMAKE_BUILD_TYPE=Debug
+	cmake ../np1sec -DCMAKE_INSTALL_PREFIX="${WORKDIR}"/bin -DBUILD_TESTS=Off -DCMAKE_BUILD_TYPE=Debug
 	make -j ${NPROC} ${MAKEOPTS}
 	cp "`libname np1sec`" ../bin/"`libdir`"/
 	cd ..
@@ -134,12 +144,11 @@ if [ ! -d np1sec-test-client ]; then
 	cd ..
 	mkdir np1sec-test-client-build
 	cd np1sec-test-client-build
-	CXXFLAGS="-fsanitize=address" \
-		cmake ../np1sec-test-client \
-			-DPIDGIN_INC_DIR="${WORKDIR}"/bin/include \
-			-DNP1SEC_LIB_DIR="${WORKDIR}"/bin/lib \
-			-DNP1SEC_INC_DIR="${WORKDIR}"/np1sec \
-			-DCMAKE_BUILD_TYPE=Debug
+	cmake ../np1sec-test-client \
+		-DPIDGIN_INC_DIR="${WORKDIR}"/bin/include \
+		-DNP1SEC_LIB_DIR="${WORKDIR}"/bin/lib \
+		-DNP1SEC_INC_DIR="${WORKDIR}"/np1sec \
+		-DCMAKE_BUILD_TYPE=Debug
 	make ${MAKEOPTS}
 	cp "`libname np1sec-plugin`" ../bin/
 	cd ..
