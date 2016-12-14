@@ -51,19 +51,11 @@ public:
     Channel(Channel&&) = default;
     Channel& operator=(Channel&&) = default;
 
-    /*
-     * Internal
-     */
     User& add_user(const std::string&, const PublicKey&);
     void remove_user(const std::string&);
-    void set_user_public_key(const std::string& username, const PublicKey&);
-    //void promote_user(const std::string& username);
     User* find_user(const std::string&);
     const User* find_user(const std::string&) const;
-    size_t size() const { return _users.size(); }
     const std::string& my_username() const;
-    //bool user_in_chat(const std::string&) const;
-    void mark_as_joined();
     std::string channel_name() const;
 
     void send_chat_message(const std::string&);
@@ -356,7 +348,6 @@ inline
 void Channel::user_authenticated(const std::string& username, const PublicKey& public_key)
 {
     inform("TODO: Channel::user_authenticated(", username, ")");
-    //set_user_public_key(username, public_key);
 }
 
 inline
