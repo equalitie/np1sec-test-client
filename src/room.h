@@ -30,10 +30,6 @@
 #include "timer.h"
 #include "toolbar.h"
 
-#ifndef _NDEBUG
-#   include "debug_proxy.h"
-#endif
-
 #include "user_list.h"
 
 namespace np1sec_plugin {
@@ -47,11 +43,7 @@ class Room final : private np1sec::RoomInterface
                  , public std::enable_shared_from_this<Room> {
     using PublicKey = np1sec::PublicKey;
 
-#if false && !defined(_NDEBUG)
-    using Np1SecRoom = DebugProxy;
-#else
     using Np1SecRoom = np1sec::Room;
-#endif
 
 public:
     Room(PurpleConversation* conv);
