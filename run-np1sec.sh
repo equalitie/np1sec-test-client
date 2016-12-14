@@ -108,7 +108,7 @@ if [ ! -x bin/bin/pidgin ]; then
 	cd ..
 fi
 
-NP1SEC_BRANCH=master
+NP1SEC_BRANCH=devel
 if [ ! -d np1sec ]; then
 	rm -rf np1sec np1sec-build bin/"`libdir`"/"`libname np1sec`"
 	git clone https://github.com/equalitie/np1sec.git np1sec
@@ -135,7 +135,7 @@ else
 	cd ..
 fi
 
-NP1SEC_TEST_CLIENT_BRANCH=master
+NP1SEC_TEST_CLIENT_BRANCH=api-docs
 if [ ! -d np1sec-test-client ]; then
 	rm -rf np1sec-test-client np1sec-test-client-build
 	git clone https://github.com/equalitie/np1sec-test-client.git np1sec-test-client
