@@ -123,16 +123,6 @@ private:
     std::unique_ptr<Np1SecRoom> _room;
 
     ChannelView* _focused_channel = nullptr;
-
-    struct Invitee {
-        std::string name;
-        PublicKey public_key;
-
-        bool operator<(const Invitee& other) const {
-            return std::tie(name, public_key)
-                 < std::tie(other.name, other.public_key);
-        }
-    };
 };
 
 } // np1sec_plugin namespace
