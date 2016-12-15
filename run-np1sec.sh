@@ -6,6 +6,50 @@
 
 set -e
 
+FORCE=false
+
+NP1SEC_BRANCH=master
+NP1SEC_TEST_CLIENT_BRANCH=master
+
+print_help() {
+	echo "Usage: $0 [options]"
+	echo "Options:"
+	echo "  --help                  # Show this help"
+	echo "  --branch=<branch-name>  # Select a specific np1sec-test-client branch"
+	echo "  --force                 # Ignore missing dependencies"
+	exit;
+}
+
+for i in "$@"; do
+	case $i in
+		-b=*|--branch=*)
+			NP1SEC_TEST_CLIENT_BRANCH="${i#*=}"
+		shift # past argument=value
+		;;
+		--force)
+			FORCE=true
+		shift # past argument with no value
+		;;
+		-h|--help)
+			print_help
+			exit
+		;;
+		*)
+			echo "Error: unknown option \"${i}\""
+			print_help
+			exit
+		;;
+	esac
+done
+
+if [ "$NP1SEC_TEST_CLIENT_BRANCH" = "devel" ]; then
+	# The devel branch currently depends on API renaming changes
+	# in the np1sec/api-docs branch. Once this PR
+	# https://github.com/equalitie/np1sec/pull/40
+	# is merged into master, this condition can be removed.
+	NP1SEC_BRANCH=api-docs
+fi
+
 NPROC=1
 
 if [ "$(expr substr $(uname -s) 1 5)" = "Linux" ]; then
@@ -37,12 +81,6 @@ libdir() {
 	# TODO: support os x
 	echo lib
 }
-
-FORCE=false
-if [ "$1" "=" "--force" ]; then
-	FORCE=true
-	shift
-fi
 
 WORKDIR="`pwd`"
 
@@ -108,7 +146,6 @@ if [ ! -x bin/bin/pidgin ]; then
 	cd ..
 fi
 
-NP1SEC_BRANCH=api-docs
 if [ ! -d np1sec ]; then
 	rm -rf np1sec np1sec-build bin/"`libdir`"/"`libname np1sec`"
 	git clone https://github.com/equalitie/np1sec.git np1sec
@@ -135,7 +172,6 @@ else
 	cd ..
 fi
 
-NP1SEC_TEST_CLIENT_BRANCH=devel
 if [ ! -d np1sec-test-client ]; then
 	rm -rf np1sec-test-client np1sec-test-client-build
 	git clone https://github.com/equalitie/np1sec-test-client.git np1sec-test-client
