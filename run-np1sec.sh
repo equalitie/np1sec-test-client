@@ -69,7 +69,7 @@ pkg-config --exists gtk+-2.0 || pkg-config --exists gtk+-3.0 || DEPS="${DEPS} li
 pkg-config --exists libxml-2.0 || DEPS="${DEPS} libxml2-dev"
 pkg-config --exists gnutls || DEPS="${DEPS} libgnutls-dev"
 testheader gcrypt.h || DEPS="${DEPS} libgcrypt-dev"
-testheader boost/optional.hpp || DEPS="${DEPS} libboost-all-dev"
+testheader boost/optional.hpp || DEPS="${DEPS} libboost1.55-dev (or higher)"
 
 if [ -n "${DEPS}" ]; then
 	echo "Missing dependencies: ${DEPS}"

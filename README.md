@@ -45,7 +45,6 @@ git
 intltool
 libasan (optional)
 libboost1.55-dev (or higher)
-libboost-all-dev
 libgcrypt-dev
 libglib2.0-dev
 libgnutls-dev
