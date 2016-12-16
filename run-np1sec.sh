@@ -8,47 +8,45 @@ set -e
 
 FORCE=false
 
+# This code currently depends on API renaming changes
+# in the np1sec/api-docs branch. Once this PR
+# https://github.com/equalitie/np1sec/pull/40
+# is merged into np1sec/master, we should start
+# using that again.
 NP1SEC_BRANCH=master
-NP1SEC_TEST_CLIENT_BRANCH=master
+NP1SEC_TEST_CLIENT_BRANCH=api-docs
 
 print_help() {
 	echo "Usage: $0 [options]"
 	echo "Options:"
-	echo "  --help                  # Show this help"
-	echo "  --branch=<branch-name>  # Select a specific np1sec-test-client branch"
-	echo "  --force                 # Ignore missing dependencies"
-	exit;
+	echo "  --help                         # Show this help"
+	echo "  --client-branch=<branch-name>  # Select a specific np1sec-test-client branch"
+	echo "  --np1sec-branch=<branch-name>  # Select a specific np1sec branch"
+	echo "  --force                        # Ignore missing dependencies"
 }
 
 for i in "$@"; do
 	case $i in
-		-b=*|--branch=*)
+		-b=*|--client-branch=*)
 			NP1SEC_TEST_CLIENT_BRANCH="${i#*=}"
-		shift # past argument=value
-		;;
+			;;
+		-n=*|--np1sec-branch=*)
+			NP1SEC_BRANCH="${i#*=}"
+			;;
 		--force)
 			FORCE=true
-		shift # past argument with no value
-		;;
+			;;
 		-h|--help)
 			print_help
 			exit
-		;;
+			;;
 		*)
 			echo "Error: unknown option \"${i}\""
 			print_help
 			exit
-		;;
+			;;
 	esac
 done
-
-if [ "$NP1SEC_TEST_CLIENT_BRANCH" = "devel" ]; then
-	# The devel branch currently depends on API renaming changes
-	# in the np1sec/api-docs branch. Once this PR
-	# https://github.com/equalitie/np1sec/pull/40
-	# is merged into master, this condition can be removed.
-	NP1SEC_BRANCH=api-docs
-fi
 
 NPROC=1
 
