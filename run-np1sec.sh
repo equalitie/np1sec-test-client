@@ -144,7 +144,10 @@ if [ ! -x bin/bin/pidgin ]; then
 	cd ..
 fi
 
+FORCE_REBUILD_CLIENT=false
+
 if [ ! -d np1sec ]; then
+	FORCE_REBUILD_CLIENT=true
 	rm -rf np1sec np1sec-build bin/"`libdir`"/"`libname np1sec`"
 	git clone https://github.com/equalitie/np1sec.git np1sec
 	cd np1sec
@@ -160,6 +163,7 @@ else
 	cd np1sec
 	git remote update
 	if [ `git rev-parse @` != `git rev-parse origin/"${NP1SEC_BRANCH}"` -o ! -e ../bin/"`libdir`"/"`libname np1sec`" ]; then
+		FORCE_REBUILD_CLIENT=true
 		git checkout "${NP1SEC_BRANCH}"
 		git pull origin "${NP1SEC_BRANCH}"
 		cd ..
@@ -189,12 +193,16 @@ if [ ! -d np1sec-test-client ]; then
 else
 	cd np1sec-test-client
 	git remote update
-	if [ `git rev-parse @` != `git rev-parse origin/"${NP1SEC_TEST_CLIENT_BRANCH}"` -o ! -e ../bin/"`libname np1sec-plugin`" ]; then
+	if [ "${FORCE_REBUILD_CLIENT}" = true -o `git rev-parse @` != `git rev-parse origin/"${NP1SEC_TEST_CLIENT_BRANCH}"` -o ! -e ../bin/"`libname np1sec-plugin`" ]; then
 		git checkout "${NP1SEC_TEST_CLIENT_BRANCH}"
 		git pull origin "${NP1SEC_TEST_CLIENT_BRANCH}"
 		cd ..
 		cd np1sec-test-client-build
-		make ${MAKEOPTS}
+		if [ "${FORCE_REBUILD_CLIENT}" = true ]; then
+			make -B ${MAKEOPTS}
+		else
+			make ${MAKEOPTS}
+		fi
 		cp "`libname np1sec-plugin`" ../bin/
 	fi
 	cd ..
