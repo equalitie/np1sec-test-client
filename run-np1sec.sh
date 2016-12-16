@@ -15,6 +15,7 @@ FORCE=false
 # using that again.
 NP1SEC_TEST_CLIENT_BRANCH=master
 NP1SEC_BRANCH=api-docs
+PIDGIN_HOME=pidgin-home
 
 USE_THIS_SCRIPT=false
 
@@ -25,6 +26,7 @@ print_help() {
 	echo "  --client-branch=<branch-name>  # Select a specific np1sec-test-client branch"
 	echo "  --np1sec-branch=<branch-name>  # Select a specific np1sec branch"
 	echo "  --use-this-script              # Don't download the newest version of this script, but use this one"
+	echo "  --config=<dir>                 # Set path to pidgin's config directory"
 	echo "  --force                        # Ignore missing dependencies"
 }
 
@@ -35,6 +37,9 @@ for i in "$@"; do
 			;;
 		-n=*|--np1sec-branch=*)
 			NP1SEC_BRANCH="${i#*=}"
+			;;
+		-c=*|--config=*)
+			PIDGIN_HOME="${i#*=}"
 			;;
 		-u|--use-this-script)
 			USE_THIS_SCRIPT=true
@@ -64,6 +69,7 @@ if [ "${USE_THIS_SCRIPT}" = false ]; then
 	./tmp.sh --use-this-script \
 		       --client-branch=${NP1SEC_TEST_CLIENT_BRANCH} \
 					 --np1sec-branch=${NP1SEC_BRANCH} \
+					 --config=${PIDGIN_HOME} \
 					 ${FORCE_FLAG}
 	exit
 fi
@@ -226,10 +232,9 @@ else
 	cd ..
 fi
 
-if [ ! -e pidgin-home/plugins/"`libname np1sec-plugin`" ]; then
-	mkdir pidgin-home
-	mkdir pidgin-home/plugins
-	ln -s ../../bin/"`libname np1sec-plugin`" pidgin-home/plugins/"`libname np1sec-plugin`"
+if [ ! -e ${PIDGIN_HOME}/plugins/"`libname np1sec-plugin`" ]; then
+	mkdir -p ${PIDGIN_HOME}/plugins
+	ln -s ../../bin/"`libname np1sec-plugin`" ${PIDGIN_HOME}/plugins/"`libname np1sec-plugin`"
 fi
 
 (cd np1sec && echo "Revision of np1sec: $(git rev-parse --short HEAD)")
@@ -238,4 +243,4 @@ fi
 # Tell the np1sec test client to output debug log.
 export NP1SEC_TEST_CLIENT_PRINT_LOG=true
 
-bin/bin/pidgin --config=pidgin-home
+bin/bin/pidgin --config=${PIDGIN_HOME}
