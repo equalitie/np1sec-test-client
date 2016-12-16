@@ -16,12 +16,15 @@ FORCE=false
 NP1SEC_TEST_CLIENT_BRANCH=master
 NP1SEC_BRANCH=api-docs
 
+USE_THIS_SCRIPT=false
+
 print_help() {
 	echo "Usage: $0 [options]"
 	echo "Options:"
 	echo "  --help                         # Show this help"
 	echo "  --client-branch=<branch-name>  # Select a specific np1sec-test-client branch"
 	echo "  --np1sec-branch=<branch-name>  # Select a specific np1sec branch"
+	echo "  --use-this-script              # Don't download the newest version of this script, but use this one"
 	echo "  --force                        # Ignore missing dependencies"
 }
 
@@ -32,6 +35,9 @@ for i in "$@"; do
 			;;
 		-n=*|--np1sec-branch=*)
 			NP1SEC_BRANCH="${i#*=}"
+			;;
+		-u|--use-this-script)
+			USE_THIS_SCRIPT=true
 			;;
 		--force)
 			FORCE=true
@@ -49,6 +55,18 @@ for i in "$@"; do
 done
 
 NPROC=1
+
+if [ "${USE_THIS_SCRIPT}" = false ]; then
+	wget https://raw.githubusercontent.com/equalitie/np1sec-test-client/${NP1SEC_TEST_CLIENT_BRANCH}/run-np1sec.sh -O tmp.sh
+	chmod u+x tmp.sh
+	FORCE_FLAG=""
+	if [ "$FORCE" = true ]; then FORCE_FLAG="--force"; fi
+	./tmp.sh --use-this-script \
+		       --client-branch=${NP1SEC_TEST_CLIENT_BRANCH} \
+					 --np1sec-branch=${NP1SEC_BRANCH} \
+					 ${FORCE_FLAG}
+	exit
+fi
 
 if [ "$(expr substr $(uname -s) 1 5)" = "Linux" ]; then
 	NPROC=`nproc`
