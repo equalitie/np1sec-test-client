@@ -45,9 +45,9 @@ public:
 public:
     const PublicKey& public_key() const { return _public_key; }
 
-    void mark_joining();
-    void mark_not_joined();
     void mark_joined();
+    void mark_not_joined();
+    void mark_in_chat();
     void mark_as_invited();
     void mark_as_not_invited();
 
@@ -62,7 +62,7 @@ public:
     bool has_joined() const;
     bool is_invited() const;
 
-    bool never_started_joining() const { return _never_started_joining; }
+    bool never_joined() const { return _never_joined; }
 
 private:
     UserList& joined_list() const;
@@ -74,8 +74,8 @@ private:
     PublicKey _public_key;
     Channel& _channel;
     bool _is_myself;
-    bool _is_joined = false;
-    bool _never_started_joining = true;
+    bool _is_in_chat = false;
+    bool _never_joined = true;
     std::unique_ptr<UserList::User> _view;
 };
 
@@ -120,7 +120,7 @@ inline void User::update_view()
 
     auto name = _name;
 
-    bool can_invite = !is_invited() && !has_joined() && !_is_joined;
+    bool can_invite = !is_invited() && !has_joined() && !_is_in_chat;
 
     _view->popup_actions.clear();
 
@@ -133,7 +133,7 @@ inline void User::update_view()
         _view->on_double_click = invite;
     }
 
-    if (_is_myself && is_invited() && !has_joined() && !_is_joined) {
+    if (_is_myself && is_invited() && !has_joined() && !_is_in_chat) {
         auto join = [this] {
             _channel._delegate->join();
         };
@@ -142,7 +142,7 @@ inline void User::update_view()
         _view->on_double_click = join;
     }
 
-    if (has_joined() && !_is_joined) {
+    if (has_joined() && !_is_in_chat) {
         if (auto main_user = _channel.find_user(_channel.my_username())) {
             if (main_user->has_joined()) {
                 name += " !c";
@@ -165,36 +165,36 @@ inline bool User::is_invited() const
     return invited_list().is_in(*_view);
 }
 
-inline void User::mark_joining()
+inline void User::mark_joined()
 {
-    _never_started_joining = false;
+    _never_joined = false;
     insert_into(joined_list());
     update_view();
 }
 
 inline void User::mark_not_joined()
 {
-    _is_joined = false;
+    _is_in_chat = false;
     insert_into(other_list());
     update_view();
 }
 
-inline void User::mark_joined()
+inline void User::mark_in_chat()
 {
-    _is_joined = true;
+    _is_in_chat = true;
     update_view();
 }
 
 inline void User::mark_as_not_invited()
 {
-    _is_joined = false;
+    _is_in_chat = false;
     insert_into(other_list());
     update_view();
 }
 
 inline void User::mark_as_invited()
 {
-    _is_joined = false;
+    _is_in_chat = false;
     insert_into(invited_list());
     update_view();
 }
