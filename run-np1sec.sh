@@ -64,13 +64,11 @@ NPROC=1
 if [ "${USE_THIS_SCRIPT}" = false ]; then
 	wget https://raw.githubusercontent.com/equalitie/np1sec-test-client/${NP1SEC_TEST_CLIENT_BRANCH}/run-np1sec.sh -O tmp.sh
 	chmod u+x tmp.sh
-	FORCE_FLAG=""
-	if [ "$FORCE" = true ]; then FORCE_FLAG="--force"; fi
 	./tmp.sh --use-this-script \
 		       --client-branch=${NP1SEC_TEST_CLIENT_BRANCH} \
 					 --np1sec-branch=${NP1SEC_BRANCH} \
 					 --config=${PIDGIN_HOME} \
-					 ${FORCE_FLAG}
+					 $([ "$FORCE" = true ] && echo "--force")
 	exit
 fi
 
@@ -232,10 +230,9 @@ else
 	cd ..
 fi
 
-if [ ! -e ${PIDGIN_HOME}/plugins/"`libname np1sec-plugin`" ]; then
-	mkdir -p ${PIDGIN_HOME}/plugins
-	ln -s ../../bin/"`libname np1sec-plugin`" ${PIDGIN_HOME}/plugins/"`libname np1sec-plugin`"
-fi
+unlink ${PIDGIN_HOME}/plugins/"`libname np1sec-plugin`" 2>/dev/null || true
+mkdir -p ${PIDGIN_HOME}/plugins
+ln -s ../../bin/"`libname np1sec-plugin`" ${PIDGIN_HOME}/plugins/"`libname np1sec-plugin`"
 
 (cd np1sec && echo "Revision of np1sec: $(git rev-parse --short HEAD)")
 (cd np1sec-test-client && echo "Revision of np1sec-test-client: $(git rev-parse --short HEAD)")
