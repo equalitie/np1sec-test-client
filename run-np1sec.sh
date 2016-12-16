@@ -13,8 +13,8 @@ FORCE=false
 # https://github.com/equalitie/np1sec/pull/40
 # is merged into np1sec/master, we should start
 # using that again.
-NP1SEC_BRANCH=master
-NP1SEC_TEST_CLIENT_BRANCH=api-docs
+NP1SEC_TEST_CLIENT_BRANCH=master
+NP1SEC_BRANCH=api-docs
 
 print_help() {
 	echo "Usage: $0 [options]"
