@@ -70,15 +70,15 @@ public:
     void invitation_cancelled(const std::string& inviter, const std::string& invitee) override;
     void user_authenticated(const std::string& username, const PublicKey& public_key) override;
     void user_authentication_failed(const std::string& username) override;
-    void user_joined(const std::string& username) override;
+    void user_joining(const std::string& username) override;
     void user_left(const std::string& username) override;
     void votekick_registered(const std::string& kicker, const std::string& victim, bool kicked) override;
     
-    void user_joined_chat(const std::string& username) override;
+    void user_joined(const std::string& username) override;
     void message_received(const std::string& sender, const std::string& message) override;
     
+    void joining() override;
     void joined() override;
-    void joined_chat() override;
     void left() override;
 
 private:
@@ -165,8 +165,8 @@ void Channel::send_chat_message(const std::string& msg)
         return interpret_as_command(msg.substr(1));
     }
 
-    if (!_delegate->in_chat()) {
-        return inform("You are currently not in the chat");
+    if (!_delegate->joined()) {
+        return inform("You have not joined the conversation yet");
     }
 
     _delegate->send_chat(msg);
@@ -289,15 +289,15 @@ inline User& Channel::add_user( const std::string& username
     auto i = _users.emplace(username, std::unique_ptr<User>(u));
 
     if (participants.count(username)) {
-        u->mark_joined();
+        u->mark_joining();
     }
 
     if (invitees.count(username)) {
         u->mark_as_invited();
     }
 
-    if (username == my_username() && _delegate->in_chat()) {
-        u->mark_in_chat();
+    if (username == my_username() && _delegate->joined()) {
+        u->mark_joined();
     }
 
     return *(i.first->second.get());
@@ -313,9 +313,9 @@ inline void Channel::remove_user(const std::string& username)
 }
 
 inline
-void Channel::user_joined(const std::string& username)
+void Channel::user_joining(const std::string& username)
 {
-    inform("Channel::user_joined(", username, ")");
+    inform("Channel::user_joining(", username, ")");
 
     auto ui = _users.find(username);
 
@@ -325,7 +325,7 @@ void Channel::user_joined(const std::string& username)
         return inform("Unknown user \"", username, "\" joine channel");
     }
 
-    ui->second->mark_joined();
+    ui->second->mark_joining();
 }
 
 inline
@@ -356,10 +356,10 @@ void Channel::user_authentication_failed(const std::string& username)
     inform("Channel::user_authentication_failed(", username, ")");
 }
 
-inline void Channel::joined()
+inline void Channel::joining()
 {
     /* This function is a bit useless, it is called right after
-     * the 'user_joined(user == myself)` function. So everything
+     * the 'user_joining(user == myself)` function. So everything
      * necessary can be done there instead. */
 }
 
@@ -378,18 +378,18 @@ void Channel::message_received(const std::string& username, const std::string& m
 }
 
 inline
-void Channel::user_joined_chat(const std::string& username)
+void Channel::user_joined(const std::string& username)
 {
-    inform("Channel::user_joined_chat(", username, ")");
+    inform("Channel::user_joined(", username, ")");
     if (auto u = find_user(username)) {
-        u->mark_in_chat();
+        u->mark_joined();
     }
 }
 
 inline
-void Channel::joined_chat()
+void Channel::joined()
 {
-    inform("Channel::joined_chat()");
+    inform("Channel::joined()");
 
     /* Can't just mark myself as being in chat and call it a day because
      * only now I can determine whether other participants are in
@@ -397,8 +397,8 @@ void Channel::joined_chat()
     for (const auto& p : _delegate->participants()) {
         auto u = find_user(p);
         assert(u);
-        if (u && _delegate->participant_in_chat(p)) {
-            u->mark_in_chat();
+        if (u && _delegate->participant_joined(p)) {
+            u->mark_joined();
         }
     }
 }
@@ -407,7 +407,7 @@ inline void Channel::left()
 {
     inform("Channel::left()");
     if (auto u = find_user(my_username())) {
-        if (_channel_view && u->never_joined()) {
+        if (_channel_view && u->never_started_joining()) {
             _channel_view->close_window();
         }
     }

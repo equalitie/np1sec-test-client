@@ -14,7 +14,7 @@ FORCE=false
 # is merged into np1sec/master, we should start
 # using that again.
 NP1SEC_TEST_CLIENT_BRANCH=master
-NP1SEC_BRANCH=master
+NP1SEC_BRANCH=api-docs
 PIDGIN_HOME=pidgin-home
 
 USE_THIS_SCRIPT=false
