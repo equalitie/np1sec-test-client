@@ -26,13 +26,13 @@
 
 namespace np1sec_plugin {
 
-class Channel;
+class Conversation;
 
 class User {
     using PublicKey = np1sec::PublicKey;
 
 public:
-    User(Channel& channel, const std::string& name, const PublicKey&);
+    User(Conversation& conversation, const std::string& name, const PublicKey&);
 
     User(const User&) = delete;
     User& operator=(const User&) = delete;
@@ -53,8 +53,6 @@ public:
 
     void update_view();
 
-    const Channel& channel() const { return _channel; }
-
     void bind_user_list(UserList&);
 
     void insert_into(UserList& list);
@@ -72,7 +70,7 @@ private:
 private:
     std::string _name;
     PublicKey _public_key;
-    Channel& _channel;
+    Conversation& _conversation;
     bool _is_myself;
     bool _is_joined = false;
     bool _never_started_joining = true;
@@ -81,26 +79,26 @@ private:
 
 } // np1sec_plugin namespace
 
-#include "channel.h"
+#include "conversation_.h"
 #include "user_info_dialog.h"
 #include "room_view.h"
-#include "channel_view.h"
+#include "conversation_view.h"
 
 namespace np1sec_plugin {
 //------------------------------------------------------------------------------
 // Implementation
 //------------------------------------------------------------------------------
 inline
-User::User(Channel& channel, const std::string& name, const PublicKey& pubkey)
+User::User(Conversation& conversation, const std::string& name, const PublicKey& pubkey)
     : _name(name)
     , _public_key(pubkey)
-    , _channel(channel)
-    , _is_myself(name == channel._room.username())
+    , _conversation(conversation)
+    , _is_myself(name == conversation._room.username())
 {
     insert_into(other_list());
 
     //_view_in_room.popup_actions["Info"] = [this] {
-    //    auto gtk_window = _channel._room.gtk_window();
+    //    auto gtk_window = _conversation._room.gtk_window();
     //    UserInfoDialog::show(gtk_window, *this);
     //};
 
@@ -126,7 +124,7 @@ inline void User::update_view()
 
     if (can_invite) {
         auto invite = [this] {
-            _channel.invite(_name, _public_key);
+            _conversation.invite(_name, _public_key);
         };
 
         _view->popup_actions["Invite"] = invite;
@@ -135,7 +133,7 @@ inline void User::update_view()
 
     if (_is_myself && is_invited() && !has_joined() && !_is_joined) {
         auto join = [this] {
-            _channel._delegate->join();
+            _conversation._delegate->join();
         };
 
         _view->popup_actions["Join"] = join;
@@ -143,7 +141,7 @@ inline void User::update_view()
     }
 
     if (has_joined() && !_is_joined) {
-        if (auto main_user = _channel.find_user(_channel.my_username())) {
+        if (auto main_user = _conversation.find_user(_conversation.my_username())) {
             if (main_user->has_joined()) {
                 name += " !c";
             }
@@ -199,8 +197,8 @@ inline void User::mark_as_invited()
     update_view();
 }
 
-inline UserList& User::joined_list()  const { return _channel._channel_view->joined_user_list(); }
-inline UserList& User::invited_list() const { return _channel._channel_view->invited_user_list(); }
-inline UserList& User::other_list()   const { return _channel._channel_view->other_user_list(); }
+inline UserList& User::joined_list()  const { return _conversation._conversation_view->joined_user_list(); }
+inline UserList& User::invited_list() const { return _conversation._conversation_view->invited_user_list(); }
+inline UserList& User::other_list()   const { return _conversation._conversation_view->other_user_list(); }
 
 } // np1sec_plugin namespace

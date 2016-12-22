@@ -25,13 +25,13 @@
 
 namespace np1sec_plugin {
 
-class Channel;
+class Conversation;
 class RoomView;
 
-class ChannelView {
+class ConversationView {
 public:
-    ChannelView(const std::shared_ptr<Room>&, Channel&);
-    ~ChannelView();
+    ConversationView(const std::shared_ptr<Room>&, Conversation&);
+    ~ConversationView();
 
     void display(const std::string& username, const std::string& message);
 
@@ -41,8 +41,8 @@ public:
     UserList& invited_user_list() { return _invited_users; }
     UserList& other_user_list() { return _other_users; }
 
-    Channel* channel() { return _channel; }
-    void reset_channel() { _channel = nullptr; }
+    Conversation* conversation() { return _conversation; }
+    void reset_conversation() { _conversation = nullptr; }
 
     void send_chat_message(const std::string&);
 
@@ -50,16 +50,16 @@ public:
 
 private:
     static gboolean
-    entry_focus_cb(GtkWidget*, GdkEventFocus*, ChannelView* self);
+    entry_focus_cb(GtkWidget*, GdkEventFocus*, ConversationView* self);
 
     static gboolean
-    entry_nofocus_cb(GtkWidget*, GdkEventFocus*, ChannelView* self);
+    entry_nofocus_cb(GtkWidget*, GdkEventFocus*, ConversationView* self);
 
     void disconnect_focus_signals(PurpleConversation* conv);
 
 private:
     std::shared_ptr<Room> _room;
-    Channel* _channel;
+    Conversation* _conversation;
     PurpleConversation* _conv;
     PidginConversation* _gtkconv;
 
@@ -73,33 +73,33 @@ private:
 
 } // np1sec_plugin namespace
 
-#include "channel.h"
+#include "conversation_.h"
 #include "room_view.h"
 
 namespace np1sec_plugin {
 //------------------------------------------------------------------------------
 // Implementation
 //------------------------------------------------------------------------------
-inline ChannelView* get_channel_view(PurpleConversation* conv) {
-    auto p = purple_conversation_get_data(conv, "np1sec_channel_view");
-    return reinterpret_cast<ChannelView*>(p);
+inline ConversationView* get_conversation_view(PurpleConversation* conv) {
+    auto p = purple_conversation_get_data(conv, "np1sec_conversation_view");
+    return reinterpret_cast<ConversationView*>(p);
 }
 
-inline void set_channel_view(PurpleConversation* conv, ChannelView* cv) {
-    purple_conversation_set_data(conv, "np1sec_channel_view", cv);
+inline void set_conversation_view(PurpleConversation* conv, ConversationView* cv) {
+    purple_conversation_set_data(conv, "np1sec_conversation_view", cv);
 }
 
 inline
-void ChannelView::send_chat_message(const std::string& msg)
+void ConversationView::send_chat_message(const std::string& msg)
 {
-    assert(_channel);
-    _channel->send_chat_message(msg);
+    assert(_conversation);
+    _conversation->send_chat_message(msg);
 }
 
 inline
-ChannelView::ChannelView(const std::shared_ptr<Room>& room, Channel& channel)
+ConversationView::ConversationView(const std::shared_ptr<Room>& room, Conversation& conversation)
     : _room(room)
-    , _channel(&channel)
+    , _conversation(&conversation)
     , _joined_users("Joined")
     , _invited_users("Invited")
     , _other_users("Invite")
@@ -107,7 +107,7 @@ ChannelView::ChannelView(const std::shared_ptr<Room>& room, Channel& channel)
     assert(_room->get_view());
     auto conv = _room->get_view()->purple_conv();
 
-    auto channel_name = _room->room_name() + ":" + channel.channel_name();
+    auto conversation_name = _room->room_name() + ":" + conversation.conversation_name();
 
     // We don't want the on_conversation_created signal to create the default
     // np1sec layout on this conversation. So disable it temporarily.
@@ -115,7 +115,7 @@ ChannelView::ChannelView(const std::shared_ptr<Room>& room, Channel& channel)
         auto& sigs = GlobalSignals::instance();
 
         auto f = std::move(sigs.on_conversation_created);
-        _conv = purple_conversation_new(PURPLE_CONV_TYPE_CHAT, conv->account, channel_name.c_str());
+        _conv = purple_conversation_new(PURPLE_CONV_TYPE_CHAT, conv->account, conversation_name.c_str());
         sigs.on_conversation_created = std::move(f);
     }
 
@@ -164,11 +164,11 @@ ChannelView::ChannelView(const std::shared_ptr<Room>& room, Channel& channel)
         gtk_widget_set_size_request(_vbox, width, height);
     }
 
-    set_channel_view(_conv, this);
+    set_conversation_view(_conv, this);
 }
 
 inline
-void ChannelView::disconnect_focus_signals(PurpleConversation* conv)
+void ConversationView::disconnect_focus_signals(PurpleConversation* conv)
 {
     auto gtkconv = PIDGIN_CONVERSATION(conv);
     g_signal_handler_disconnect(G_OBJECT(gtkconv->entry), focus_in_signal_id);
@@ -176,7 +176,7 @@ void ChannelView::disconnect_focus_signals(PurpleConversation* conv)
 }
 
 inline
-void ChannelView::close_window()
+void ConversationView::close_window()
 {
     if (!_conv) return;
 
@@ -192,10 +192,10 @@ void ChannelView::close_window()
 }
 
 inline
-ChannelView::~ChannelView()
+ConversationView::~ConversationView()
 {
-    if (_channel) {
-        assert(!_channel->_channel_view || _channel->_channel_view == this);
+    if (_conversation) {
+        assert(!_conversation->_conversation_view || _conversation->_conversation_view == this);
     }
 
     if (_conv) {
@@ -203,7 +203,7 @@ ChannelView::~ChannelView()
         gtk_container_remove(GTK_CONTAINER(_target), _vbox);
         gtk_paned_pack2(GTK_PANED(_target), _userlist, FALSE, TRUE);
         g_object_unref(_userlist);
-        set_channel_view(_conv, nullptr);
+        set_conversation_view(_conv, nullptr);
     }
 
     /* Note: we don't want to explicitly call close_window (or
@@ -213,26 +213,26 @@ ChannelView::~ChannelView()
      * free. */
 
     // TODO: Is this necessary?
-    if (_room->focused_channel() == this) {
-        _room->set_channel_focus(nullptr);
+    if (_room->focused_conversation() == this) {
+        _room->set_conversation_focus(nullptr);
     }
 
-    if (_channel) {
-        _channel->_channel_view = nullptr;
-        _channel->self_destruct();
+    if (_conversation) {
+        _conversation->_conversation_view = nullptr;
+        _conversation->self_destruct();
     }
 }
 
 template<class... Args>
 inline
-void ChannelView::inform(Args&&... args)
+void ConversationView::inform(Args&&... args)
 {
-    assert(_channel);
-    display(_channel->my_username(), util::inform_str(args...));
+    assert(_conversation);
+    display(_conversation->my_username(), util::inform_str(args...));
 }
 
 inline
-void ChannelView::display(const std::string& sender, const std::string& message)
+void ConversationView::display(const std::string& sender, const std::string& message)
 {
     if (!_conv) return;
 
@@ -245,16 +245,16 @@ void ChannelView::display(const std::string& sender, const std::string& message)
 }
 
 inline gboolean
-ChannelView::entry_focus_cb(GtkWidget*, GdkEventFocus*, ChannelView* self)
+ConversationView::entry_focus_cb(GtkWidget*, GdkEventFocus*, ConversationView* self)
 {
-    self->_room->set_channel_focus(self);
+    self->_room->set_conversation_focus(self);
     return false;
 }
 
 inline gboolean
-ChannelView::entry_nofocus_cb(GtkWidget*, GdkEventFocus*, ChannelView* self)
+ConversationView::entry_nofocus_cb(GtkWidget*, GdkEventFocus*, ConversationView* self)
 {
-    self->_room->set_channel_focus(nullptr);
+    self->_room->set_conversation_focus(nullptr);
     return false;
 }
 

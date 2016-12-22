@@ -34,8 +34,8 @@
 
 namespace np1sec_plugin {
 
-class Channel;
-class ChannelView;
+class Conversation;
+class ConversationView;
 class User;
 class RoomView;
 
@@ -68,8 +68,8 @@ public:
 
     GtkWindow* gtk_window() const;
 
-    void set_channel_focus(ChannelView*);
-    ChannelView* focused_channel() const;
+    void set_conversation_focus(ConversationView*);
+    ConversationView* focused_conversation() const;
 
     std::string room_name() const;
 
@@ -100,14 +100,14 @@ private:
     static std::string sanitize_name(std::string name);
 
     bool interpret_as_command(const std::string&);
-    User* find_user_in_channel(const std::string& username);
+    User* find_user_in_conversation(const std::string& username);
     void add_user(const std::string& username, const PublicKey&);
     void remove_user(const std::string& username);
 
 private:
-    friend class Channel;
+    friend class Conversation;
 
-    using ChannelMap = std::map<np1sec::Conversation*, std::unique_ptr<Channel>>;
+    using ConversationMap = std::map<np1sec::Conversation*, std::unique_ptr<Conversation>>;
 
     PurpleConversation *_conv;
     std::string _username;
@@ -115,20 +115,20 @@ private:
     np1sec::PrivateKey _private_key;
 
     RoomView* _room_view = nullptr;
-    ChannelMap _channels;
+    ConversationMap _conversations;
     std::map<std::string, std::unique_ptr<UserList::User>> _users;
 
     std::unique_ptr<Toolbar> _toolbar;
 
     std::unique_ptr<Np1SecRoom> _room;
 
-    ChannelView* _focused_channel = nullptr;
+    ConversationView* _focused_conversation = nullptr;
 };
 
 } // np1sec_plugin namespace
 
 /* Plugin headers */
-#include "channel.h"
+#include "conversation_.h"
 #include "parser.h"
 #include "room_view.h"
 
@@ -168,13 +168,13 @@ void Room::chat_left()
     log(this, " Room::chat_left ", _room.get());
     if (!in_chat()) return;
     _room.reset();
-    _channels.clear();
+    _conversations.clear();
 }
 
 inline
-User* Room::find_user_in_channel(const std::string& username)
+User* Room::find_user_in_conversation(const std::string& username)
 {
-    for (const auto& c : _channels | boost::adaptors::map_values) {
+    for (const auto& c : _conversations | boost::adaptors::map_values) {
         if (auto u = c->find_user(_username)) {
             return u;
         }
@@ -187,9 +187,9 @@ Room::~Room()
 {
     log(this, " Room::~Room");
 
-    /* Do this before we disconnect, that way channels may be able
+    /* Do this before we disconnect, that way conversations may be able
      * to send a leave signal. */
-    _channels.clear();
+    _conversations.clear();
 
     if (_room && _room->connected()) {
         _room->disconnect();
@@ -199,20 +199,20 @@ Room::~Room()
 inline
 void Room::send_chat_message(const std::string& message)
 {
-    auto channel_view = focused_channel();
+    auto conversation_view = focused_conversation();
 
-    if (!channel_view) {
+    if (!conversation_view) {
         if (interpret_as_command(message)) {
             return;
         }
         /*
-         * We're sending from the main room (not a channel).
+         * We're sending from the main room (not a conversation).
          * So send as plain text
          */
         return send_message(message);
     }
 
-    channel_view->send_chat_message(message);
+    conversation_view->send_chat_message(message);
 }
 
 inline
@@ -308,7 +308,7 @@ void Room::add_user(const std::string& username, const PublicKey& pubkey)
         u->set_text(username);
     }
 
-    for (auto& c : _channels | boost::adaptors::map_values) {
+    for (auto& c : _conversations | boost::adaptors::map_values) {
         c->add_user(username, pubkey);
     }
 }
@@ -325,7 +325,7 @@ void Room::remove_user(const std::string& username)
 {
     _users.erase(username);
 
-    for (auto& c : _channels | boost::adaptors::map_values) {
+    for (auto& c : _conversations | boost::adaptors::map_values) {
         c->remove_user(username);
     }
 }
@@ -351,15 +351,15 @@ Room::created_conversation(np1sec::Conversation* c)
 {
     inform("Room::created_conversation ", size_t(c));
 
-    if (_channels.count(c) != 0) {
+    if (_conversations.count(c) != 0) {
         assert(0 && "Conversation already present");
         return nullptr;
     }
 
-    auto channel = new Channel(c, *this);
-    _channels.emplace(c, std::unique_ptr<Channel>(channel));
+    auto conversation = new Conversation(c, *this);
+    _conversations.emplace(c, std::unique_ptr<Conversation>(conversation));
 
-    return channel;
+    return conversation;
 }
 
 inline
@@ -368,13 +368,13 @@ Room::invited_to_conversation(np1sec::Conversation* c, const std::string& by)
 {
     inform("Room::invited_to_conversation by ", by);
 
-    if (_channels.count(c) != 0) {
+    if (_conversations.count(c) != 0) {
         assert(0 && "Conversation already present");
         return nullptr;
     }
 
-    auto p = new Channel(c, *this);
-    _channels.emplace(c, std::unique_ptr<Channel>(p));
+    auto p = new Conversation(c, *this);
+    _conversations.emplace(c, std::unique_ptr<Conversation>(p));
     return p;
 }
 
@@ -458,15 +458,15 @@ GtkWindow* Room::gtk_window() const {
 }
 
 inline
-ChannelView* Room::focused_channel() const
+ConversationView* Room::focused_conversation() const
 {
-    return _focused_channel;
+    return _focused_conversation;
 }
 
 inline
-void Room::set_channel_focus(ChannelView* cv)
+void Room::set_conversation_focus(ConversationView* cv)
 {
-    _focused_channel = cv;
+    _focused_conversation = cv;
 }
 
 inline

@@ -35,35 +35,35 @@ namespace np1sec_plugin {
 
 class Room;
 class User;
-class ChannelPage;
-class ChannelView;
+class ConversationPage;
+class ConversationView;
 
-class Channel final : public np1sec::ConversationInterface {
+class Conversation final : public np1sec::ConversationInterface {
     using PublicKey = np1sec::PublicKey;
 
 public:
-    Channel(np1sec::Conversation*, Room&);
-    ~Channel();
+    Conversation(np1sec::Conversation*, Room&);
+    ~Conversation();
 
-    Channel(const Channel&) = delete;
-    Channel& operator=(const Channel&) = delete;
+    Conversation(const Conversation&) = delete;
+    Conversation& operator=(const Conversation&) = delete;
 
-    Channel(Channel&&) = default;
-    Channel& operator=(Channel&&) = default;
+    Conversation(Conversation&&) = default;
+    Conversation& operator=(Conversation&&) = default;
 
     User& add_user(const std::string&, const PublicKey&);
     void remove_user(const std::string&);
     User* find_user(const std::string&);
     const User* find_user(const std::string&) const;
     const std::string& my_username() const;
-    std::string channel_name() const;
+    std::string conversation_name() const;
 
     void send_chat_message(const std::string&);
     void invite(const std::string&, const PublicKey&);
 
     void self_destruct();
 
-    ChannelView* channel_view() { return _channel_view; }
+    ConversationView* conversation_view() { return _conversation_view; }
 
 public:
     void user_invited(const std::string& inviter, const std::string& invitee) override;
@@ -85,7 +85,7 @@ private:
     /*
      * Internal
      */
-    size_t channel_id() const { return size_t(_delegate); }
+    size_t conversation_id() const { return size_t(_delegate); }
 
     template<class... Args> void inform(Args&&...);
     void interpret_as_command(const std::string& msg);
@@ -97,14 +97,14 @@ private:
 
 private:
     friend class User;
-    friend class ChannelView;
+    friend class ConversationView;
 
     np1sec::Conversation* _delegate;
 
     Room& _room;
     std::map<std::string, std::unique_ptr<User>> _users;
 
-    ChannelView* _channel_view;
+    ConversationView* _conversation_view;
 };
 
 } // np1sec_plugin namespace
@@ -112,7 +112,7 @@ private:
 /* plugin headers */
 #include "room.h"
 #include "user.h"
-#include "channel_view.h"
+#include "conversation_view.h"
 #include "parser.h"
 
 namespace np1sec_plugin {
@@ -120,12 +120,12 @@ namespace np1sec_plugin {
 //------------------------------------------------------------------------------
 // Implementation
 //------------------------------------------------------------------------------
-inline Channel::Channel(np1sec::Conversation* delegate, Room& room)
+inline Conversation::Conversation(np1sec::Conversation* delegate, Room& room)
     : _delegate(delegate)
     , _room(room)
-    , _channel_view(new ChannelView(_room.shared_from_this(), *this))
+    , _conversation_view(new ConversationView(_room.shared_from_this(), *this))
 {
-    log(this, " Channel::Channel delegate:", delegate, " room:", &room);
+    log(this, " Conversation::Conversation delegate:", delegate, " room:", &room);
 
     auto participants = _delegate->participants();
     auto invitees     = _delegate->invitees();
@@ -141,25 +141,25 @@ inline Channel::Channel(np1sec::Conversation* delegate, Room& room)
     }
 }
 
-inline Channel::~Channel()
+inline Conversation::~Conversation()
 {
-    log(this, " Channel::~Channel start");
+    log(this, " Conversation::~Conversation start");
     _users.clear();
 
     if (_room.in_chat()) {
         _delegate->leave(true /* Don't want to receive the 'left' callback */);
     }
 
-    if (_channel_view) {
-        _channel_view->reset_channel();
+    if (_conversation_view) {
+        _conversation_view->reset_conversation();
     }
 
-    delete _channel_view;
-    log(this, " Channel::~Channel end");
+    delete _conversation_view;
+    log(this, " Conversation::~Conversation end");
 }
 
 inline
-void Channel::send_chat_message(const std::string& msg)
+void Conversation::send_chat_message(const std::string& msg)
 {
     if (msg.substr(0, 1) == ".") {
         return interpret_as_command(msg.substr(1));
@@ -173,13 +173,13 @@ void Channel::send_chat_message(const std::string& msg)
 }
 
 inline
-std::map<std::string, np1sec::PublicKey> Channel::get_users() const
+std::map<std::string, np1sec::PublicKey> Conversation::get_users() const
 {
     return _room._room->users();
 }
 
 inline
-void Channel::interpret_as_command(const std::string& cmd)
+void Conversation::interpret_as_command(const std::string& cmd)
 {
     using namespace std;
 
@@ -228,34 +228,34 @@ void Channel::interpret_as_command(const std::string& cmd)
 }
 
 inline
-void Channel::invite(const std::string& invitee, const PublicKey& pubkey) {
-    inform("Channel::invite ", invitee);
+void Conversation::invite(const std::string& invitee, const PublicKey& pubkey) {
+    inform("Conversation::invite ", invitee);
     _delegate->invite(invitee, pubkey);
 }
 
-inline std::string Channel::channel_name() const
+inline std::string Conversation::conversation_name() const
 {
     return std::to_string(size_t(_delegate));
 }
 
-inline const std::string& Channel::my_username() const
+inline const std::string& Conversation::my_username() const
 {
     return _room.username();
 }
 
 inline
-void Channel::user_invited(const std::string& inviter, const std::string& invitee)
+void Conversation::user_invited(const std::string& inviter, const std::string& invitee)
 {
-    inform("Channel::user_invited ", invitee, " by ", inviter);
+    inform("Conversation::user_invited ", invitee, " by ", inviter);
     if (auto u = find_user(invitee)) {
         u->mark_as_invited();
     }
 }
 
 inline
-void Channel::invitation_cancelled(const std::string& inviter, const std::string& invitee)
+void Conversation::invitation_cancelled(const std::string& inviter, const std::string& invitee)
 {
-    inform("Channel::invitation_cancelled ", inviter, " ", invitee);
+    inform("Conversation::invitation_cancelled ", inviter, " ", invitee);
     if (auto u = find_user(invitee)) {
         if (_delegate->invitees().count(invitee) == 0) {
             u->mark_as_not_invited();
@@ -264,13 +264,13 @@ void Channel::invitation_cancelled(const std::string& inviter, const std::string
 }
 
 inline
-void Channel::self_destruct()
+void Conversation::self_destruct()
 {
-    _room._channels.erase(_delegate);
+    _room._conversations.erase(_delegate);
 }
 
-inline User& Channel::add_user( const std::string& username
-                              , const PublicKey& pubkey)
+inline User& Conversation::add_user( const std::string& username
+                                   , const PublicKey& pubkey)
 {
     return add_user(username,
                     pubkey,
@@ -278,10 +278,10 @@ inline User& Channel::add_user( const std::string& username
                     _delegate->invitees());
 }
 
-inline User& Channel::add_user( const std::string& username
-                              , const PublicKey& pubkey
-                              , const std::set<std::string>& participants
-                              , const std::set<std::string>& invitees)
+inline User& Conversation::add_user( const std::string& username
+                                   , const PublicKey& pubkey
+                                   , const std::set<std::string>& participants
+                                   , const std::set<std::string>& invitees)
 {
     assert(_users.count(username) == 0);
 
@@ -303,7 +303,7 @@ inline User& Channel::add_user( const std::string& username
     return *(i.first->second.get());
 }
 
-inline void Channel::remove_user(const std::string& username)
+inline void Conversation::remove_user(const std::string& username)
 {
     _users.erase(username);
 
@@ -313,25 +313,25 @@ inline void Channel::remove_user(const std::string& username)
 }
 
 inline
-void Channel::user_joining(const std::string& username)
+void Conversation::user_joining(const std::string& username)
 {
-    inform("Channel::user_joining(", username, ")");
+    inform("Conversation::user_joining(", username, ")");
 
     auto ui = _users.find(username);
 
     assert(ui != _users.end());
 
     if (ui == _users.end()) {
-        return inform("Unknown user \"", username, "\" joine channel");
+        return inform("Unknown user \"", username, "\" joine conversation");
     }
 
     ui->second->mark_joining();
 }
 
 inline
-void Channel::user_left(const std::string& username)
+void Conversation::user_left(const std::string& username)
 {
-    inform("Channel::user_left(", username, ")");
+    inform("Conversation::user_left(", username, ")");
 
     if (auto u = find_user(username)) {
         u->mark_not_joined();
@@ -339,24 +339,24 @@ void Channel::user_left(const std::string& username)
 }
 
 inline
-void Channel::votekick_registered(const std::string& kicker, const std::string& victim, bool kicked)
+void Conversation::votekick_registered(const std::string& kicker, const std::string& victim, bool kicked)
 {
-    inform("Channel::votekick_registered(", kicker, " ", victim, " ", kicked);
+    inform("Conversation::votekick_registered(", kicker, " ", victim, " ", kicked);
 }
 
 inline
-void Channel::user_authenticated(const std::string& username, const PublicKey& public_key)
+void Conversation::user_authenticated(const std::string& username, const PublicKey& public_key)
 {
-    inform("TODO: Channel::user_authenticated(", username, ")");
+    inform("TODO: Conversation::user_authenticated(", username, ")");
 }
 
 inline
-void Channel::user_authentication_failed(const std::string& username)
+void Conversation::user_authentication_failed(const std::string& username)
 {
-    inform("Channel::user_authentication_failed(", username, ")");
+    inform("Conversation::user_authentication_failed(", username, ")");
 }
 
-inline void Channel::joining()
+inline void Conversation::joining()
 {
     /* This function is a bit useless, it is called right after
      * the 'user_joining(user == myself)` function. So everything
@@ -365,31 +365,31 @@ inline void Channel::joining()
 
 template<class... Args>
 inline
-void Channel::inform(Args&&... args)
+void Conversation::inform(Args&&... args)
 {
-    log(this, " Channel: ", util::str(args...));
-    _channel_view->display(my_username(), util::inform_str(args...));
+    log(this, " Conversation: ", util::str(args...));
+    _conversation_view->display(my_username(), util::inform_str(args...));
 }
 
 inline
-void Channel::message_received(const std::string& username, const std::string& message)
+void Conversation::message_received(const std::string& username, const std::string& message)
 {
-    _channel_view->display(username, message);
+    _conversation_view->display(username, message);
 }
 
 inline
-void Channel::user_joined(const std::string& username)
+void Conversation::user_joined(const std::string& username)
 {
-    inform("Channel::user_joined(", username, ")");
+    inform("Conversation::user_joined(", username, ")");
     if (auto u = find_user(username)) {
         u->mark_joined();
     }
 }
 
 inline
-void Channel::joined()
+void Conversation::joined()
 {
-    inform("Channel::joined()");
+    inform("Conversation::joined()");
 
     /* Can't just mark myself as being in chat and call it a day because
      * only now I can determine whether other participants are in
@@ -403,25 +403,25 @@ void Channel::joined()
     }
 }
 
-inline void Channel::left()
+inline void Conversation::left()
 {
-    inform("Channel::left()");
+    inform("Conversation::left()");
     if (auto u = find_user(my_username())) {
-        if (_channel_view && u->never_started_joining()) {
-            _channel_view->close_window();
+        if (_conversation_view && u->never_started_joining()) {
+            _conversation_view->close_window();
         }
     }
     self_destruct();
 }
 
 inline
-User* Channel::find_user(const std::string& user) {
+User* Conversation::find_user(const std::string& user) {
     auto user_i = _users.find(user);
     if (user_i == _users.end()) return nullptr;
     return user_i->second.get();
 }
 
-const User* Channel::find_user(const std::string& user) const {
+const User* Conversation::find_user(const std::string& user) const {
     auto user_i = _users.find(user);
     if (user_i == _users.end()) return nullptr;
     return user_i->second.get();

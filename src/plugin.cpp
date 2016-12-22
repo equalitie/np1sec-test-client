@@ -199,30 +199,31 @@ static void unapply_np1sec(PurpleConversation* conv)
 
     assert(is_chat(conv));
 
-    auto channel_view = np1sec_plugin::get_channel_view(conv);
-    auto room_view    = np1sec_plugin::get_room_view(conv);
+    auto conversation_view = np1sec_plugin::get_conversation_view(conv);
+    auto room_view         = np1sec_plugin::get_room_view(conv);
 
-    log("unapply_np1sec conv:", conv, " rv:", room_view, " cv:", channel_view, " start");
+    log("unapply_np1sec conv:", conv, " rv:", room_view, " cv:", conversation_view, " start");
 
     /*
      * A pidgin conversation can't at the same time represent a room and
-     * a channel.
+     * a conversation.
      */
-    assert(!(channel_view && room_view));
+    assert(!(conversation_view && room_view));
 
     /*
-     * It is important here to first set the channel view to null to
-     * before deleting the channel view. This way we tell the channel view
-     * not to call purple_conversation_destroy recursively.
+     * It is important here to first set the conversation view to
+     * null to before deleting the conversation view. This way we
+     * tell the conversation view not to call
+     * purple_conversation_destroy recursively.
      */
-    np1sec_plugin::set_channel_view(conv, nullptr);
+    np1sec_plugin::set_conversation_view(conv, nullptr);
     np1sec_plugin::set_room_view(conv, nullptr);
 
     if (room_view) {
         set_room(conv, nullptr);
     }
 
-    delete channel_view;
+    delete conversation_view;
     delete room_view;
 
     log("unapply_np1sec end");
