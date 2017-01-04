@@ -43,6 +43,9 @@ public:
     PurpleConversation* purple_conv() { return _conv; }
 
 private:
+    void setup_toolbar();
+
+private:
     std::shared_ptr<Room> _room;
 
     PurpleConversation* _conv;
@@ -61,6 +64,8 @@ private:
     GtkWidget* _target;
     GtkWidget* _vpaned;
     GtkWidget* _userlist;
+
+    std::unique_ptr<Toolbar> _toolbar;
 };
 
 } // np1sec_plugin namespace
@@ -143,6 +148,18 @@ inline RoomView::RoomView(PurpleConversation* conv, const std::shared_ptr<Room>&
     }
 
     gtk_widget_show(_vpaned);
+
+    setup_toolbar();
+}
+
+inline
+void RoomView::setup_toolbar()
+{
+    _toolbar.reset(new Toolbar(_gtkconv));
+
+    _toolbar->add_button("Create conversation", [this] {
+        _room->create_conversation();
+    });
 }
 
 inline

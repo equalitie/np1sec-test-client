@@ -73,6 +73,8 @@ public:
 
     std::string room_name() const;
 
+    void create_conversation();
+
 private:
     void display(const std::string& message);
     void display(const std::string& sender, const std::string& message);
@@ -118,8 +120,6 @@ private:
     ConversationMap _conversations;
     std::map<std::string, std::unique_ptr<UserList::User>> _users;
 
-    std::unique_ptr<Toolbar> _toolbar;
-
     std::unique_ptr<Np1SecRoom> _room;
 
     ConversationView* _focused_conversation = nullptr;
@@ -141,13 +141,8 @@ Room::Room(PurpleConversation* conv)
     : _conv(conv)
     , _username(sanitize_name(conv->account->username))
     , _private_key(np1sec::PrivateKey::generate(true))
-    , _toolbar(new Toolbar(PIDGIN_CONVERSATION(conv)))
 {
     log(this, " Room::Room conv=", conv);
-
-    _toolbar->add_button("Create conversation", [this] {
-        _room->create_conversation();
-    });
 }
 
 inline
@@ -194,6 +189,13 @@ Room::~Room()
     if (_room && _room->connected()) {
         _room->disconnect();
     }
+}
+
+inline
+void Room::create_conversation()
+{
+    if (!_room) return;
+    _room->create_conversation();
 }
 
 inline
