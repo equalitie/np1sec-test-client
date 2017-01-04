@@ -69,6 +69,8 @@ private:
 
     gint focus_in_signal_id, focus_out_signal_id;
     GtkWidget *_target, *_userlist, *_vbox;
+
+    std::string _my_username;
 };
 
 } // np1sec_plugin namespace
@@ -92,7 +94,10 @@ inline void set_conversation_view(PurpleConversation* conv, ConversationView* cv
 inline
 void ConversationView::send_chat_message(const std::string& msg)
 {
-    assert(_conversation);
+    if (!_conversation) {
+        inform("Can't send, the conversation has bee destroyed");
+        return;
+    }
     _conversation->send_chat_message(msg);
 }
 
@@ -103,6 +108,7 @@ ConversationView::ConversationView(const std::shared_ptr<Room>& room, Conversati
     , _joined_users("Joined")
     , _invited_users("Invited")
     , _other_users("Invite")
+    , _my_username(conversation.my_username())
 {
     assert(_room->get_view());
     auto conv = _room->get_view()->purple_conv();
@@ -227,8 +233,7 @@ template<class... Args>
 inline
 void ConversationView::inform(Args&&... args)
 {
-    assert(_conversation);
-    display(_conversation->my_username(), util::inform_str(args...));
+    display(_my_username, util::inform_str(args...));
 }
 
 inline

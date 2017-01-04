@@ -389,7 +389,8 @@ inline
 void Room::disconnected()
 {
     inform("Room::disconnected()");
-    _users.erase(_username);
+    _users.clear();
+    _conversations.clear();
 }
 
 template<class... Args>

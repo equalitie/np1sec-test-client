@@ -154,7 +154,6 @@ inline Conversation::~Conversation()
         _conversation_view->reset_conversation();
     }
 
-    delete _conversation_view;
     log(this, " Conversation::~Conversation end");
 }
 
