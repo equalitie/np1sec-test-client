@@ -9,9 +9,9 @@ not rely on it for security - or even stable communications.
 # Try (n+1)sec!
 
 We invite our community to try out [(n+1)sec](https://pad.equalit.ie/p/np1sec-client)
-with us. We'll be hanging out in the `np1sec` room on the `np1sec.equalit.ie` XMPP
-server (`np1sec@conference.np1sec.equalit.ie`) between 14:00 and 17:00 UTC every
-Friday until the end of January 2017.
+with us. We often hang out in the `np1sec` room on the `np1sec.equalit.ie` XMPP
+server (`np1sec@conference.np1sec.equalit.ie`) and we're happy to chat with anyone
+interested in the project.
 
 You'll need an account on the server to join us. Registrations are open and you
 can create an account through the wizard that will open automatically when you
@@ -25,7 +25,7 @@ account on the server" option before you click "Add". Confirm your user name and
 password in the prompt, click OK and you'll have an account on the testing
 Jabber server.
 
-We look forward to chatting with you all securely!
+We look forward to chatting with you securely!
 
 
 # Setup for users
