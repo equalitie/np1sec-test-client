@@ -6,28 +6,6 @@ software. It may crash and it may have undocumented security bugs. You should
 not rely on it for security - or even stable communications.
 
 
-# Try (n+1)sec!
-
-We invite our community to try out [(n+1)sec](https://pad.equalit.ie/p/np1sec-client)
-with us. We often hang out in the `np1sec` room on the `np1sec.equalit.ie` XMPP
-server (`np1sec@conference.np1sec.equalit.ie`) and we're happy to chat with anyone
-interested in the project.
-
-You'll need an account on the server to join us. Registrations are open and you
-can create an account through the wizard that will open automatically when you
-first launch the script to install this client.
-
-* Protocol: XMPP
-* Domain: np1sec.equalit.ie
-
-Choose a user name you like and a strong password and check the "Create this new
-account on the server" option before you click "Add". Confirm your user name and
-password in the prompt, click OK and you'll have an account on the testing
-Jabber server.
-
-We look forward to chatting with you securely!
-
-
 # Setup for users
 
 The (n+1)sec test client works on any Linux distribution.
